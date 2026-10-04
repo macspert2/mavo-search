@@ -96,6 +96,9 @@ mavo_search_the_title();                  // title with the query's words marked
 | `mavo_search_suggestions( $lang, $limit )` | Queries worth suggesting: searched often lately (and this time last year), with plenty of exact results, minus "never suggest" and the current search |
 | `mavo_search_url( $query, $lang )` | The search URL in a language (`/en/?s=…`) |
 | `mavo_search_result_attributes( $post )` | `data-mavo-search-*` attributes for a result tile, so its clicks are counted |
+| `mavo_search_did_you_mean( $query, $lang )` | The query with unknown words corrected ("lisbone" → "lisbonne"), only if that finds exact results; else `''` |
+| `mavo_search_other_languages( $query, $lang )` | `[ lang => exact results ]` of the same query in the other languages |
+| `mavo_search_for_path( $path, $lang, $limit )` | Post IDs a broken URL was probably after, from its slug; `[]` for file-like paths. Never logged |
 | `mavo_search_result( $post )` / `mavo_search_current()` | The current search's result for a post / as a whole |
 | `mavo_search_result_image( $post, $args )` | Attachment ID: best photo for the query's concepts, else the featured image |
 | `mavo_search_get_excerpt( $post_id, $query, $args )` | Contextual highlighted excerpt (escaped HTML) |
@@ -135,6 +138,12 @@ Coming from Relevanssi: `docs/relevanssi-compat.md`.
   muted line saying so — *Lieu : Lefkada (Grèce)*, *Thème : Harry Potter*,
   *Photo : « Le phare de Chania »*, *Mot-clé : …*, *Notre sélection* — from
   the result's `reason`; skipped when the tile's place badge already says it.
+- No results: "Vouliez-vous dire …?" and links to the same search in the
+  other languages that have results; partial results add "did you mean"
+  when a word was found nowhere.
+- The 404 page (`inc/mv-404.php`) shows up to three posts found from the
+  broken URL's words. Bot probes and missing files never get that far: the
+  `mavo-quick-404` must-use plugin answers them with a bare 404.
 - Result tiles carry `mavo_search_result_attributes()`, and
   `assets/clicks.js` counts clicks on them and on the photo row.
 - A query that is exactly an image concept gets one row of photos from

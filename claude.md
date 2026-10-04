@@ -27,6 +27,7 @@ Consumer documentation is in `README.md`; Relevanssi specifics in
 | `includes/class-mavo-search-engine.php` | `MVS_Engine`: ranking, AND/OR, bonuses, explanation, paging, cache |
 | `includes/class-mavo-search-highlight.php` | `MVS_Highlight`: marks in text and HTML |
 | `includes/class-mavo-search-excerpt.php` | `MVS_Excerpt`: best window, summary fallback |
+| `includes/class-mavo-search-recover.php` | `MVS_Recover`: did you mean, other languages, 404 paths |
 | `includes/class-mavo-search-reason.php` | `MVS_Reason`: why a result was found, when the tile does not show it |
 | `includes/class-mavo-search-status.php` | `MVS_Status`: current / stale / missing / failed / orphans, in SQL |
 | `includes/class-mavo-search-rebuild.php` | `MVS_Rebuild`: cursor batches for admin, CLI and the background build |
@@ -250,6 +251,27 @@ documents gained an `alts` column (schema 3) and tag names in `signals`
 until it reaches a document, a photo match shows its concept label or
 nothing.
 
+## Dead ends: no results, 404s (2026-10-04)
+
+Brainstorm items 6 and 7. `MVS_Recover` runs only where a page already
+failed, and never logs.
+
+- **Did you mean**: each word no document has (the ranking's `missing`) is
+  replaced by the closest index term — Levenshtein 1 up to 5 letters, 2
+  beyond, same first letter, length ±2 — preferring terms in titles,
+  places, hubs and guides, then common ones. Offered only if the corrected
+  query finds exact results. Corrections are folded terms ("lisbonne",
+  not "Lisbonne").
+- **Other languages**: exact result counts elsewhere; the theme links them.
+- **404s**: the slug's words (last two segments, dates, language prefix and
+  tag/page segments dropped) are searched; up to three posts are shown on
+  the theme's 404 page, which keeps its 404 status. File-like paths give
+  nothing — and mostly never arrive: the separate **mavo-quick-404**
+  must-use plugin (user's choice) answers probes before plugins load and
+  file-like 404s before the theme renders. Its late layer acts only on what
+  WordPress already called a 404, so no endpoint served by any plugin can
+  be cut off — the answer to "how can I be sure not to miss anything".
+
 ## Ranking, in one place
 
 ```
@@ -274,7 +296,7 @@ lookups are index ranges on `(term, lang)`.
 ## Tests
 
 `tests/run.sh` runs each `test-*.php` in its own process against an in-memory
-SQLite `$wpdb` (`tests/harness.php`): 290 assertions over text, ranking (the
+SQLite `$wpdb` (`tests/harness.php`): 325 assertions over text, ranking (the
 representative queries of agent.md), excerpts and highlighting, the
 `posts_pre_query` integration and logging, incremental sync and status, the
 admin page, WP-CLI, and a site with none of the integrations.

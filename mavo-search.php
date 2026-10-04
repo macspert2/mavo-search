@@ -33,6 +33,7 @@ require_once MVS_PLUGIN_DIR . 'includes/class-mavo-search-engine.php';
 require_once MVS_PLUGIN_DIR . 'includes/class-mavo-search-highlight.php';
 require_once MVS_PLUGIN_DIR . 'includes/class-mavo-search-excerpt.php';
 require_once MVS_PLUGIN_DIR . 'includes/class-mavo-search-reason.php';
+require_once MVS_PLUGIN_DIR . 'includes/class-mavo-search-recover.php';
 require_once MVS_PLUGIN_DIR . 'includes/class-mavo-search-status.php';
 require_once MVS_PLUGIN_DIR . 'includes/class-mavo-search-rebuild.php';
 require_once MVS_PLUGIN_DIR . 'includes/class-mavo-search-sync.php';

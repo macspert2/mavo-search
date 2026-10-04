@@ -175,6 +175,46 @@ function mavo_search_result_image( $post = null, array $args = [] ): int {
 	return (int) get_post_thumbnail_id( $post );
 }
 
+/* ------------------------------------------------------------ dead ends */
+
+/**
+ * The current (or given) query with its unknown words corrected —
+ * "lisbone" → "lisbonne" — or '' when nothing is misspelt or the correction
+ * finds nothing either. For a page with no or only partial results.
+ */
+function mavo_search_did_you_mean( ?string $query = null, ?string $lang = null ): string {
+	$query = $query ?? ( function_exists( 'get_search_query' ) ? (string) get_search_query( false ) : '' );
+
+	return '' === trim( $query ) ? '' : MVS_Recover::did_you_mean( $query, MVS_Lang::resolve( $lang ) );
+}
+
+/**
+ * How many exact results the same query has in each other language — for
+ * "no results in English, 4 in French". Languages without any are absent.
+ *
+ * @return array<string,int>
+ */
+function mavo_search_other_languages( ?string $query = null, ?string $lang = null ): array {
+	$query = $query ?? ( function_exists( 'get_search_query' ) ? (string) get_search_query( false ) : '' );
+
+	return '' === trim( $query ) ? [] : MVS_Recover::other_languages( $query, MVS_Lang::resolve( $lang ) );
+}
+
+/**
+ * Posts a broken URL was probably after, searched from its slug
+ * ("/2014/05/voyage-en-crete/" → "voyage en crete"). [] when the path does
+ * not look like an article (a file, wp-content/…). For the 404 page; never
+ * logged as a search.
+ *
+ * @param string|null $path Default the current request's path.
+ * @return int[]
+ */
+function mavo_search_for_path( ?string $path = null, ?string $lang = null, int $limit = 3 ): array {
+	$path = $path ?? (string) ( $_SERVER['REQUEST_URI'] ?? '' ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput -- only ever split into words.
+
+	return MVS_Recover::for_path( $path, MVS_Lang::resolve( $lang ), $limit );
+}
+
 /* --------------------------------------------------------- presentation */
 
 /**

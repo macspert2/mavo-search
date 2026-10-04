@@ -271,6 +271,7 @@ function add_query_arg( $args, $url = '' ) {
 	if ( is_string( $args ) ) { $args = [ $args => $url ]; $url = func_get_arg( 2 ); }
 	return $url . ( str_contains( $url, '?' ) ? '&' : '?' ) . implode( '&', array_map( static fn( $k, $v ) => "$k=$v", array_keys( $args ), $args ) );
 }
+function wp_parse_url( $url, $c = -1 ) { return -1 === $c ? parse_url( $url ) : parse_url( $url, $c ); }
 function home_url( $p = '' ) { return 'https://example.test' . $p; }
 function rest_url( $p = '' ) { return 'https://example.test/wp-json/' . $p; }
 function wp_enqueue_script( ...$a ) { $GLOBALS['MOCK_SCRIPTS'][] = $a[0]; }
@@ -381,6 +382,7 @@ require MVS_PLUGIN_DIR . 'includes/class-mavo-search-engine.php';
 require MVS_PLUGIN_DIR . 'includes/class-mavo-search-highlight.php';
 require MVS_PLUGIN_DIR . 'includes/class-mavo-search-excerpt.php';
 require MVS_PLUGIN_DIR . 'includes/class-mavo-search-reason.php';
+require MVS_PLUGIN_DIR . 'includes/class-mavo-search-recover.php';
 require MVS_PLUGIN_DIR . 'includes/class-mavo-search-status.php';
 require MVS_PLUGIN_DIR . 'includes/class-mavo-search-rebuild.php';
 require MVS_PLUGIN_DIR . 'includes/class-mavo-search-sync.php';
