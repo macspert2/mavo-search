@@ -4,8 +4,9 @@
  *
  * One row per (query, language, day) with a counter — never a row per
  * search, and never anything about the searcher: no IP, no user, no session.
- * Only first pages are counted, and not searches by people who can edit posts
- * (Relevanssi left out the two admin accounts). Kept 400 days.
+ * Only first pages of GET searches are counted, not searches by people who
+ * can edit posts (Relevanssi left out the two admin accounts), and not what
+ * only crawlers and scanners send (junk()). Kept 400 days.
  *
  * The query is stored lowercased and trimmed, accents kept, so a report reads
  * as visitors wrote. Off switch: Tools → Mavo Search, or the
@@ -40,8 +41,35 @@ class MVS_Log {
 		return mb_substr( mb_strtolower( MVS_Query::clean( $query ), 'UTF-8' ), 0, 191, 'UTF-8' );
 	}
 
+	/**
+	 * Not a visitor's search: something only a crawler or a scanner sends.
+	 * Searched like any query, never counted — so it reaches neither the
+	 * reports nor the suggestions.
+	 *
+	 *   encoded more than once (a crawler re-encoding a stored URL)
+	 *   not UTF-8 once decoded (cut-off bytes, overlong quotes)
+	 *   backslashes, angle brackets or control characters (injection probes)
+	 *   more than two quotes, or longer than 100 characters
+	 *
+	 * @param string $raw The query as received, before cleaning.
+	 */
+	public static function junk( string $raw ): bool {
+		$rounds  = 0;
+		$decoded = MVS_Query::decode( $raw, $rounds );
+
+		return $rounds > 0
+			|| ! mb_check_encoding( $raw, 'UTF-8' )
+			|| (bool) preg_match( '/[\\\\<>\x00-\x1f\x7f]/u', $decoded )
+			|| preg_match_all( '/["\'\x{2019}]/u', $decoded ) > 2
+			|| mb_strlen( trim( $decoded ), 'UTF-8' ) > 100;
+	}
+
 	public static function record( string $query, string $lang, int $results, string $fallback = 'none' ): void {
 		global $wpdb;
+
+		if ( self::junk( $query ) ) {
+			return;
+		}
 
 		$query = self::key( $query );
 

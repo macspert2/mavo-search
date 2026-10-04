@@ -108,10 +108,44 @@ class MVS_Query {
 
 	/** Visitor input → plain text, bounded. Never a pattern, never SQL. */
 	public static function clean( string $query ): string {
-		$query = wp_strip_all_tags( $query );
+		$query = wp_strip_all_tags( self::decode( $query ) );
 		$query = (string) preg_replace( '/\s+/u', ' ', $query );
 
 		return trim( mb_substr( trim( $query ), 0, self::MAX_LENGTH, 'UTF-8' ) );
+	}
+
+	/**
+	 * Undo percent-encoding left in a query — once is normal for a link
+	 * copied around, a hundred times is a crawler re-encoding a stored URL
+	 * on every visit (bingbot's "v%25252525…C3…A9lo" was "vélo") — and drop
+	 * byte sequences that are not UTF-8 (a cut-off "%C3", or a scanner's
+	 * overlong "%C0%A7"). PHP has already decoded the URL once; anything
+	 * still encoded was encoded more than once.
+	 *
+	 * @param int|null $rounds Set to how many extra rounds were undone.
+	 */
+	public static function decode( string $query, ?int &$rounds = null ): string {
+		$rounds = 0;
+
+		while ( $rounds < 500 && preg_match( '/%[0-9a-f]{2}/i', $query ) ) {
+			$decoded = rawurldecode( $query );
+
+			if ( $decoded === $query ) {
+				break;
+			}
+
+			$query = $decoded;
+			$rounds++;
+		}
+
+		// Keep only well-formed UTF-8 sequences (RFC 3629). Not iconv's
+		// //IGNORE: some builds return nothing at all on the first bad byte.
+		if ( ! mb_check_encoding( $query, 'UTF-8' ) ) {
+			preg_match_all( '/[\x00-\x7F]|[\xC2-\xDF][\x80-\xBF]|\xE0[\xA0-\xBF][\x80-\xBF]|[\xE1-\xEC\xEE\xEF][\x80-\xBF]{2}|\xED[\x80-\x9F][\x80-\xBF]|\xF0[\x90-\xBF][\x80-\xBF]{2}|[\xF1-\xF3][\x80-\xBF]{3}|\xF4[\x80-\x8F][\x80-\xBF]{2}/', $query, $m );
+			$query = implode( '', $m[0] );
+		}
+
+		return $query;
 	}
 
 	/**

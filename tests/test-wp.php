@@ -122,4 +122,55 @@ $q = search_query();
 apply_filters( 'posts_pre_query', null, $q );
 same( 'filter to 0: the guide is an ordinary result', [ [], 26 ], [ mavo_search_current()['guides'], $q->found_posts ] );
 
+/* -------------------------------------------- crawlers, scanners, encodings */
+
+global $wpdb;
+$wpdb->query( 'DELETE FROM wp_mavo_search_log' );
+update_option( MVS_Log::ENABLED_OPTION, '1' );
+$GLOBALS['MOCK_CAN_EDIT'] = false;
+add_filter( 'mavo_search_guides', static fn() => 0 );
+
+// bingbot's URL, as PHP hands it over: decoded once, still encoded ~150 times.
+$bing = 'v%C3%A9lo%2Fen-GB';
+for ( $i = 0; $i < 150; $i++ ) {
+	$bing = str_replace( '%', '%25', $bing );
+}
+same( 'decoded however deep', 'vélo/en-GB', MVS_Query::clean( $bing ) );
+same( 'once is enough for an ordinary encoded query', 'été à porto', MVS_Query::clean( '%C3%A9t%C3%A9 %C3%A0 porto' ) );
+same( 'a lone percent stays', '100% porto', MVS_Query::clean( '100% porto' ) );
+same( 'a cut-off byte dropped, the rest kept', 'bavi', MVS_Query::clean( "bavi\xC3" ) );
+same( 'valid multibyte text untouched around a bad byte', 'élo vé', MVS_Query::clean( "élo\xC0\xA7 vé" ) );
+same( 'the scanner’s probe, decoded, overlong bytes dropped', "1'\"\\'\\\"", MVS_Query::clean( '1%C0%A7%C0%A2%2527%2522\\\'\\"' ) );
+
+$scanner = '1%C0%A7%C0%A2%2527%2522\\\'\\"';
+foreach ( [ 'bing' => $bing, 'scanner' => $scanner, 'tags' => '<script>porto</script>', 'long' => str_repeat( 'porto ', 30 ), 'quotes' => "'porto' \"x\"" ] as $label => $junk ) {
+	check( "junk: $label", MVS_Log::junk( $junk ) );
+}
+foreach ( [ 'porto', "l'été à Porto", 'Arthur’s Seat', 'Saint-Malo', '100% vélo', 'où dormir ?' ] as $ok ) {
+	check( "not junk: $ok", ! MVS_Log::junk( $ok ) );
+}
+
+apply_filters( 'posts_pre_query', null, search_query( [ 's' => $bing ] ) );
+apply_filters( 'posts_pre_query', null, search_query( [ 's' => $scanner ] ) );
+same( 'junk is searched but not counted', 0, (int) $wpdb->get_var( 'SELECT COUNT(*) FROM wp_mavo_search_log' ) );
+
+unset( $GLOBALS['MOCK_LOCALIZED'] );
+$GLOBALS['MOCK_IS_SEARCH'] = true;
+MVS_WP::enqueue();
+check( 'no click counting on a junk search', ! isset( $GLOBALS['MOCK_LOCALIZED']['MAVO_SEARCH_CLICKS'] ) );
+
+$_SERVER['REQUEST_METHOD'] = 'POST';
+apply_filters( 'posts_pre_query', null, search_query( [ 's' => 'porto' ] ) );
+same( 'a POSTed search is not counted', 0, (int) $wpdb->get_var( 'SELECT COUNT(*) FROM wp_mavo_search_log' ) );
+$_SERVER['REQUEST_METHOD'] = 'GET';
+apply_filters( 'posts_pre_query', null, search_query( [ 's' => 'porto' ] ) );
+same( 'a GET search is', 1, (int) $wpdb->get_var( 'SELECT COUNT(*) FROM wp_mavo_search_log' ) );
+
+apply_filters( 'posts_pre_query', null, search_query( [ 's' => 'porto', 'paged' => 2 ] ) );
+unset( $GLOBALS['MOCK_LOCALIZED'] );
+MVS_WP::enqueue();
+check( 'clicks still counted on page 2', isset( $GLOBALS['MOCK_LOCALIZED']['MAVO_SEARCH_CLICKS'] ) );
+
+same( 'a forged click with a junk query is refused', false, MVS_Clicks::record( $scanner, 'fr', 1, 1 ) );
+
 done();

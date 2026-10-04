@@ -88,6 +88,7 @@ same( 'script told the query and language', [ 'https://example.test/wp-json/mavo
 
 unset( $GLOBALS['MOCK_LOCALIZED'] );
 $GLOBALS['MOCK_CAN_EDIT'] = true;
+MVS_WP::pre_query( null, new WP_Query( [ 's' => 'Lisbonne', 'posts_per_page' => 10, 'paged' => 1 ] ) );
 MVS_WP::enqueue();
 check( 'not for editors', ! isset( $GLOBALS['MOCK_LOCALIZED']['MAVO_SEARCH_CLICKS'] ) );
 

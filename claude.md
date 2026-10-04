@@ -158,6 +158,19 @@ search, no IP, user or session at all. First pages only; people who can edit
 posts are not counted. Pruned after 400 days. agent.md's `clicked_*` and
 `session_hash` columns were not built (later, if ever).
 
+### 10b. Crawlers, scanners, encodings (2026-10-04)
+
+Found in the live log: bingbot replaying a stored URL encoded about 150
+times (`v%25252525…C3…A9lo/en-GB`, i.e. "vélo/en-GB"), and a scanner probing
+`s` with overlong and double-encoded quotes. `MVS_Query::clean()` now decodes
+leftover percent-encoding until it is gone and keeps only well-formed UTF-8
+(an explicit byte filter: iconv's `//IGNORE` returned an empty string on
+some builds). Such queries are still answered, but `MVS_Log::junk()` keeps
+them out of the log and the click counts: encoded more than once, not UTF-8,
+backslashes / angle brackets / control characters, more than two quotes, or
+over 100 characters. Only GET searches are counted (the form never POSTs).
+`robots.txt` should disallow `/?s=` for well-behaved crawlers.
+
 ### 11. Smaller things
 
 - **Stopwords** are short per-language lists; Relevanssi's 600-word French
@@ -316,7 +329,7 @@ lookups are index ranges on `(term, lang)`.
 ## Tests
 
 `tests/run.sh` runs each `test-*.php` in its own process against an in-memory
-SQLite `$wpdb` (`tests/harness.php`): 351 assertions over text, ranking (the
+SQLite `$wpdb` (`tests/harness.php`): 374 assertions over text, ranking (the
 representative queries of agent.md), excerpts and highlighting, the
 `posts_pre_query` integration and logging, incremental sync and status, the
 admin page, WP-CLI, and a site with none of the integrations.

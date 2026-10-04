@@ -60,6 +60,10 @@ class MVS_Clicks {
 	public static function record( string $query, string $lang, int $post_id, int $rank, string $source = 'result' ): bool {
 		global $wpdb;
 
+		if ( MVS_Log::junk( $query ) ) {
+			return false;
+		}
+
 		$query = MVS_Log::key( $query );
 		$lang  = MVS_Lang::normalize( $lang );
 

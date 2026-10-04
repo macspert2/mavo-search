@@ -29,6 +29,7 @@ class MVS_WP {
 	/** @var array<int,array> post_id => result of the current search */
 	private static array $hits  = [];
 	private static ?array $last = null;
+	private static bool $countable = false;
 
 	public static function init(): void {
 		add_filter( 'posts_pre_query', [ __CLASS__, 'pre_query' ], 10, 2 );
@@ -87,8 +88,16 @@ class MVS_WP {
 		$query->found_posts   = $result['total'];
 		$query->max_num_pages = $result['pages'];
 
-		if ( 1 === $page && ! current_user_can( 'edit_posts' ) ) {
-			MVS_Log::record( $result['query'], $result['lang'], $result['total'], $result['fallback'] );
+		// Counted: asked for by a visitor's GET (the search form
+		// never POSTs; scanners do), not by an editor, and not junk (MVS_Log::junk()
+		// sees the query as received, before it was cleaned). The log counts
+		// first pages only; clicks count on every page.
+		self::$countable = 'GET' === strtoupper( (string) ( $_SERVER['REQUEST_METHOD'] ?? 'GET' ) ) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+			&& ! current_user_can( 'edit_posts' )
+			&& ! MVS_Log::junk( (string) $query->get( 's' ) );
+
+		if ( self::$countable && 1 === $page ) {
+			MVS_Log::record( (string) $query->get( 's' ), $result['lang'], $result['total'], $result['fallback'] );
 		}
 
 		$ids = array_map( 'intval', array_column( $result['results'], 'post_id' ) );
@@ -144,9 +153,10 @@ class MVS_WP {
 
 		wp_enqueue_style( 'mavo-search', MVS_PLUGIN_URL . 'assets/search.css', [], MVS_VERSION );
 
-		// Click counting (MVS_Clicks): only on a search answered here, and not
-		// for the people who edit the site — the log leaves them out too.
-		if ( null !== self::$last && MVS_Log::enabled() && ! current_user_can( 'edit_posts' ) ) {
+		// Click counting (MVS_Clicks): only on a search answered here that the
+		// log counted — no editors, no POSTs, no junk; pages 2+ count clicks
+		// too, so the page condition is not part of it.
+		if ( null !== self::$last && self::$countable && MVS_Log::enabled() ) {
 			wp_enqueue_script( 'mavo-search-clicks', MVS_PLUGIN_URL . 'assets/clicks.js', [], MVS_VERSION, true );
 			wp_localize_script( 'mavo-search-clicks', 'MAVO_SEARCH_CLICKS', [
 				'endpoint' => rest_url( MVS_Clicks::REST_NS . '/click' ),
@@ -158,8 +168,9 @@ class MVS_WP {
 
 	/** For tests. */
 	public static function reset(): void {
-		self::$hits = [];
-		self::$last = null;
+		self::$hits      = [];
+		self::$last      = null;
+		self::$countable = false;
 	}
 
 	/* -------------------------------------------------------------- private */
