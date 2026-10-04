@@ -1,0 +1,18 @@
+.mvs__table { max-width: 1000px; margin-bottom: 16px; }
+.mvs__table th, .mvs__table td { vertical-align: top; }
+.mvs__warn { color: #b32d2e; }
+.mvs__facts { display: grid; grid-template-columns: max-content 1fr; gap: 4px 16px; max-width: 1000px; }
+.mvs__facts dt { font-weight: 600; }
+.mvs__facts dd { margin: 0; }
+.mvs__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.mvs__progress { min-height: 1.5em; font-weight: 600; }
+.mvs__inline { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0 24px; }
+.mvs__test { display: flex; gap: 8px; align-items: center; max-width: 1000px; margin-bottom: 12px; }
+.mvs__test .large-text { flex: 1 1 auto; }
+.mvs__results td:nth-child(2) { max-width: 520px; }
+.mvs__excerpt { margin: 4px 0; color: #50575e; }
+.mvs__explain { border-collapse: collapse; margin-top: 6px; }
+.mvs__explain td { padding: 1px 12px 1px 0; white-space: nowrap; }
+.mvs__weights { max-width: 360px; }
+.mvs__columns { display: flex; flex-wrap: wrap; gap: 16px; }
+.mvs__columns .mvs__table { flex: 1 1 280px; max-width: 360px; }

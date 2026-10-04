@@ -1,0 +1,10 @@
+/*
+ * Search-term highlighting. Deliberately minimal: the child theme decides the
+ * final look. Relevanssi showed matches as red text (#ff0000); to keep that,
+ * add to the theme: .mavo-search-highlight { color: #c00; }
+ */
+mark.mavo-search-highlight {
+	background: none;
+	color: inherit;
+	font-weight: 600;
+}

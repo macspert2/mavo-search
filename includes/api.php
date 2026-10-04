@@ -1,0 +1,185 @@
+<?php
+/**
+ * Stable procedural API.
+ *
+ * This is the contract. Nothing outside this plugin should name its tables or
+ * classes; a consumer guards with function_exists() and degrades when the
+ * plugin is off, per sharing-between-plugins.md:
+ *
+ *   if ( function_exists( 'mavo_search_result' ) ) {
+ *       $hit = mavo_search_result();   // score, matched fields… of the current loop post
+ *   }
+ *
+ * Language: wherever $lang is optional, null means Polylang's current
+ * language, else fr. A search only ever returns documents of one language.
+ *
+ * Relevanssi's functions are deliberately not provided under its names:
+ * nothing on this site calls them. docs/relevanssi-compat.md maps each to
+ * its equivalent here.
+ */
+
+defined( 'ABSPATH' ) || exit;
+
+/* --------------------------------------------------------------- search */
+
+/**
+ * Search the index.
+ *
+ * @param array $args {
+ *     @type string|null     $lang       Default current language.
+ *     @type int             $page       Default 1.
+ *     @type int             $per_page   Default 10, max 100.
+ *     @type string|string[] $post_types Default every indexed type.
+ *     @type bool            $excerpts   Default true: contextual, highlighted excerpts.
+ *     @type bool            $fallback   Default true: partial matches when nothing matches every word.
+ *     @type bool            $explain    Default false: score components per result, and the parsed query.
+ * }
+ * @return array{query:string,lang:string,total:int,page:int,per_page:int,pages:int,fallback:string,
+ *               results:array<int,array{post_id:int,score:float,matched_terms:string[],matched_fields:string[],
+ *               matched_image_concepts:string[],image_alt_only:bool,places:int[],hubs:int[],excerpt?:string,
+ *               excerpt_source?:string,debug?:array}>,parsed?:array}
+ *         fallback: 'none', or 'or' when the results only match some of the words.
+ */
+function mavo_search( string $query, array $args = [] ): array {
+	return MVS_Engine::search( $query, $args );
+}
+
+/**
+ * How a query is read: its word groups and their variants, quoted phrases,
+ * and the mavo-image-index concepts it names — e.g. to offer
+ * mavo_image_results_url( $concept ) beside the results.
+ *
+ * @return array{query:string,lang:string,normalized:string,tokens:string[],groups:array,phrases:string[],concepts:array<string,float>}
+ */
+function mavo_search_parse_query( string $query, ?string $lang = null ): array {
+	return MVS_Query::parse( $query, $lang );
+}
+
+/* -------------------------------------------------------- current search */
+
+/**
+ * The current search's result for a post in the loop: score, matched terms
+ * and fields, matched image concepts, places, hubs, excerpt. Null outside a
+ * search answered by Mavo Search.
+ *
+ * @param int|WP_Post|null $post Default the loop's post.
+ */
+function mavo_search_result( $post = null ): ?array {
+	$post = get_post( $post );
+
+	return $post ? MVS_WP::hit( (int) $post->ID ) : null;
+}
+
+/**
+ * The current search as a whole — total, pages, fallback ('or' = no exact
+ * results, these are partial matches) — or null.
+ */
+function mavo_search_current(): ?array {
+	return MVS_WP::last();
+}
+
+/**
+ * The image to show for a result: the post's photo best matching the image
+ * concepts the query named (via mavo-image-index), else its featured image.
+ * Never changes the featured image itself. 0 when there is neither.
+ *
+ * @param array $args Passed to mavo_image_best_match(), e.g. orientation.
+ */
+function mavo_search_result_image( $post = null, array $args = [] ): int {
+	$post = get_post( $post );
+
+	if ( ! $post ) {
+		return 0;
+	}
+
+	$concepts = MVS_WP::hit( (int) $post->ID )['matched_image_concepts'] ?? [];
+
+	if ( $concepts && function_exists( 'mavo_image_best_match' ) ) {
+		$image = mavo_image_best_match( array_merge( [ 'orientation' => 'landscape' ], $args, [
+			'post_ids'         => [ (int) $post->ID ],
+			'concepts'         => $concepts,
+			'concept_operator' => 'OR',
+			'same_language'    => false,
+		] ) );
+
+		if ( ! empty( $image['attachment_id'] ) ) {
+			return (int) $image['attachment_id'];
+		}
+	}
+
+	return (int) get_post_thumbnail_id( $post );
+}
+
+/* --------------------------------------------------------- presentation */
+
+/**
+ * Contextual, highlighted excerpt of a post for a query. Escaped HTML.
+ *
+ * @param string|array $query A query, or an array of words.
+ * @param array        $args  length (characters, default 450), lang
+ */
+function mavo_search_get_excerpt( int $post_id, $query, array $args = [] ): string {
+	global $wpdb;
+
+	$row = $wpdb->get_row( $wpdb->prepare( 'SELECT content, excerpt, lang FROM ' . MVS_DB::docs() . ' WHERE post_id = %d', $post_id ), ARRAY_A );
+
+	if ( ! $row ) {
+		return '';
+	}
+
+	$lang = MVS_Lang::normalize( $args['lang'] ?? null ) ?? (string) $row['lang'];
+	$hl   = MVS_Query::highlight_terms( MVS_Query::parse( is_array( $query ) ? implode( ' ', $query ) : (string) $query, $lang ) );
+
+	return MVS_Excerpt::build( (string) $row['content'], (string) $row['excerpt'], $hl, $lang, isset( $args['length'] ) ? (int) $args['length'] : null )['html'];
+}
+
+/**
+ * Mark a query's words in a text or HTML: <mark class="mavo-search-highlight">.
+ * Tags, attributes, URLs, scripts and entities are never touched.
+ *
+ * @param string|array $query A query, or an array of words.
+ * @param array        $args  lang
+ */
+function mavo_search_highlight_terms( string $content, $query, array $args = [] ): string {
+	$lang = MVS_Lang::resolve( $args['lang'] ?? null );
+	$hl   = MVS_Query::highlight_terms( MVS_Query::parse( is_array( $query ) ? implode( ' ', $query ) : (string) $query, $lang ) );
+
+	/** The query whose words are highlighted. */
+	$hl = (array) apply_filters( 'mavo_search_highlight_query', $hl, $query, $lang );
+
+	return MVS_Highlight::html( $content, $hl, $lang );
+}
+
+/** A post's title with the current search's words marked. Plain title outside a search. */
+function mavo_search_get_highlighted_title( $post = null ): string {
+	$post  = get_post( $post );
+	$title = $post ? get_the_title( $post ) : '';
+	$query = function_exists( 'get_search_query' ) ? (string) get_search_query( false ) : '';
+
+	return '' === $query || '' === $title ? $title : mavo_search_highlight_terms( $title, $query );
+}
+
+function mavo_search_the_title( $post = null ): void {
+	echo mavo_search_get_highlighted_title( $post ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- get_the_title() output, text re-escaped by the highlighter.
+}
+
+/* ---------------------------------------------------------- maintenance */
+
+/** Reindex one post now. True when it is in the index afterwards. */
+function mavo_search_reindex_post( int $post_id ): bool {
+	return in_array( MVS_Indexer::index( [ $post_id ], true )[ $post_id ] ?? 'removed', [ 'indexed', 'unchanged' ], true );
+}
+
+/** Remove one post from the index now. */
+function mavo_search_delete_post( int $post_id ): void {
+	MVS_Indexer::purge( $post_id );
+}
+
+/**
+ * Something a post's document depends on changed where no hook here can see
+ * it — say, a plugin moved its place by SQL. Reindexed at the end of the
+ * request.
+ */
+function mavo_search_mark_post_stale( int $post_id ): void {
+	MVS_Sync::queue_post( $post_id );
+}
