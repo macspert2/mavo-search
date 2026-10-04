@@ -15,8 +15,12 @@ defined( 'ABSPATH' ) || exit;
 
 class MVS_Indexer {
 
-	/** Bump when what gets indexed, or how, changes: every document becomes stale. */
-	const VERSION = '1';
+	/**
+	 * Bump when what gets indexed, or how, changes: every document becomes stale.
+	 *
+	 * 2 — documents keep their alt texts and tag names (2026-10-04).
+	 */
+	const VERSION = '2';
 
 	/** Term rows per INSERT. */
 	const INSERT_CHUNK = 250;
@@ -130,6 +134,7 @@ class MVS_Indexer {
 			'title_norm'    => $doc['title_norm'],
 			'excerpt'       => $doc['excerpt'],
 			'content'       => $doc['content'],
+			'alts'          => $doc['alts'],
 			'boost'         => $doc['boost'],
 			'signals'       => (string) wp_json_encode( $doc['signals'] ),
 			'post_date'     => self::date( $doc['post_date'] ),
@@ -205,6 +210,7 @@ class MVS_Indexer {
 			'title_norm' => '',
 			'excerpt'    => '',
 			'content'    => '',
+			'alts'       => '',
 			'signals'    => '{}',
 			'status'     => 'failed',
 			'error'      => $message,

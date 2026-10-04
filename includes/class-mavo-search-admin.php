@@ -350,6 +350,9 @@ class MVS_Admin {
 							<strong><a href="<?php echo esc_url( (string) get_permalink( $hit['post_id'] ) ); ?>" target="_blank" rel="noopener"><?php echo esc_html( get_the_title( $hit['post_id'] ) ); ?></a></strong>
 							<span class="description">#<?php echo (int) $hit['post_id']; ?> · <?php echo esc_html( (string) get_post_type( $hit['post_id'] ) ); ?></span>
 							<p class="mvs__excerpt"><?php echo wp_kses( $hit['excerpt'] ?? '', [ 'mark' => [ 'class' => true ] ] ); ?></p>
+							<?php if ( ! empty( $hit['reason'] ) ) : ?>
+								<span class="description"><?php echo esc_html( sprintf( __( 'why: %s', 'mavo-search' ), implode( ' · ', array_filter( array_map( 'strval', $hit['reason'] ) ) ) ) ); ?></span><br>
+							<?php endif; ?>
 							<?php if ( $hit['matched_image_concepts'] ) : ?>
 								<span class="description"><?php echo esc_html( sprintf( __( 'image concepts: %s', 'mavo-search' ), implode( ', ', $hit['matched_image_concepts'] ) ) ); ?></span>
 							<?php endif; ?>

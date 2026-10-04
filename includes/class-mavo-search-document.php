@@ -67,7 +67,7 @@ class MVS_Document {
 
 	/**
 	 * @return array{post_id:int,lang:string,post_type:string,title:string,title_norm:string,
-	 *               excerpt:string,content:string,boost:float,signals:array,
+	 *               excerpt:string,content:string,alts:string,boost:float,signals:array,
 	 *               fields:array<string,array<string,int>>,post_date:string,post_modified:string,hash:string}
 	 */
 	public static function build( WP_Post $post ): array {
@@ -111,6 +111,8 @@ class MVS_Document {
 			'concepts' => array_keys( $images['concepts'] ),
 			'guide'    => $guide,
 			'is_hub'   => MVS_Hubs::is_hub( $post->ID ),
+			// Names, so "why this matched" can say which tag.
+			'tags'     => array_slice( array_values( array_unique( array_map( 'strval', (array) ( $sources['taxonomy'] ?? [] ) ) ) ), 0, 30 ),
 		];
 
 		$title = (string) ( $sources['title'][0] ?? '' );
@@ -122,6 +124,8 @@ class MVS_Document {
 			'title_norm'    => MVS_Text::normalize( $title ),
 			'excerpt'       => (string) ( $sources['excerpt'][0] ?? '' ),
 			'content'       => (string) ( $sources['content'][0] ?? '' ),
+			// Kept whole, so "why this matched" can quote the photo.
+			'alts'          => implode( "\n", array_map( 'strval', (array) ( $sources['alt'] ?? [] ) ) ),
 			'boost'         => round( $boost, 3 ),
 			'signals'       => $signals,
 			'fields'        => self::fields( $sources, $lang ),
@@ -129,7 +133,7 @@ class MVS_Document {
 			'post_modified' => (string) $post->post_modified_gmt,
 		];
 
-		$doc['hash'] = md5( serialize( [ $doc['title'], $doc['excerpt'], $doc['content'], $doc['boost'], $doc['signals'], $doc['fields'], $lang, $doc['post_type'] ] ) );
+		$doc['hash'] = md5( serialize( [ $doc['title'], $doc['excerpt'], $doc['content'], $doc['alts'], $doc['boost'], $doc['signals'], $doc['fields'], $lang, $doc['post_type'] ] ) );
 
 		return $doc;
 	}

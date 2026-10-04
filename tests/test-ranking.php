@@ -189,4 +189,39 @@ same( 'result image: the photo matching the query', 600, mavo_search_result_imag
 MVS_WP::pre_query( null, new WP_Query( [ 's' => 'lefkada', 'posts_per_page' => 10, 'paged' => 1 ] ) );
 same( 'result image: no concept in the query, the featured image', 601, mavo_search_result_image( 6 ) );
 
+/* ------------------------------------------------------ why this matched */
+
+mvs_post( 17, 'Une semaine tranquille', '<p>Rien de particulier.</p>', [ 'tags' => [ 'Patrimoine mondial' ] ] );
+mvs_post( 18, 'Notre page anglaise', '<p>Tout sur nos voyages outre-Manche.</p>', [ 'type' => 'page' ] );
+$GLOBALS['MOCK_IMAGES'][17] = [ [ 'id' => 1700, 'alt' => [ 'fr' => 'Fleurs de Funchal' ], 'concepts' => [ 'garden' => [ 'Jardin', 1.0 ] ] ] ];
+add_filter( 'mavo_search_guide_places', static fn( $ids, $post_id ) => 18 === $post_id ? [ mvs_term( 'Londres' ) ] : $ids, 10, 2 );
+foreach ( [ 17, 18 ] as $id ) {
+	mavo_search_reindex_post( $id );
+}
+
+function reason_of( string $query, int $post_id ): ?array {
+	foreach ( mavo_search( $query, [ 'per_page' => 50 ] )['results'] as $hit ) {
+		if ( $hit['post_id'] === $post_id ) {
+			return $hit['reason'];
+		}
+	}
+	return [ 'not found' ];
+}
+
+same( 'visible in the title: no reason', null, reason_of( 'lefkada', 6 ) );
+same( 'visible in the excerpt: no reason', null, reason_of( 'oia', 8 ) );
+same( 'a wider place: the article’s own, and the one matched', [ 'kind' => 'place', 'name' => 'Lefkada', 'within' => 'Grèce' ], reason_of( 'grèce', 6 ) );
+same( '... without accents too', [ 'kind' => 'place', 'name' => 'Santorin', 'within' => 'Grèce' ], reason_of( 'grece', 8 ) );
+same( 'its own place, not in its title', [ 'kind' => 'place', 'name' => 'Édimbourg', 'within' => '' ], reason_of( 'edimbourg', 15 ) );
+same( 'a hub', [ 'kind' => 'hub', 'name' => 'Harry Potter' ], reason_of( 'harry potter', 15 ) );
+same( 'a photo, quoted', [ 'kind' => 'photo', 'text' => 'Le phare de Chania', 'concept' => '' ], reason_of( 'phare', 12 ) );
+same( 'a photo by concept only', [ 'kind' => 'photo', 'text' => '', 'concept' => 'Jardin' ], reason_of( 'jardin', 17 ) );
+same( 'a tag', [ 'kind' => 'tag', 'name' => 'Patrimoine mondial' ], reason_of( 'patrimoine', 17 ) );
+same( 'a guide page', [ 'kind' => 'guide', 'name' => 'Londres' ], reason_of( 'londres', 18 ) );
+same( 'the guide named in its title: no reason', null, reason_of( 'londres', 1 ) );
+
+MVS_Best_Bets::save( MVS_Best_Bets::parse( 'zanzibar = 17' ) );
+same( 'a best bet nothing else explains', [ 'kind' => 'pinned' ], reason_of( 'zanzibar', 17 ) );
+MVS_Best_Bets::save( [] );
+
 done();

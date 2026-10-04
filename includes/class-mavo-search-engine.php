@@ -103,7 +103,7 @@ class MVS_Engine {
 		$ranking  = self::ranking( $parsed, $args );
 		$total    = count( $ranking['ranked'] );
 		$slice    = array_slice( $ranking['ranked'], ( $page - 1 ) * $per_page, $per_page );
-		$content  = $args['excerpts'] ? self::texts( array_column( $slice, 'doc_id' ) ) : [];
+		$content  = self::texts( array_column( $slice, 'doc_id' ) );
 		$results  = [];
 
 		foreach ( $slice as $i => $hit ) {
@@ -132,6 +132,14 @@ class MVS_Engine {
 				$result['excerpt']        = (string) apply_filters( 'mavo_search_excerpt', $excerpt['html'], $hit['post_id'], $parsed, $excerpt['source'] );
 				$result['excerpt_source'] = $excerpt['source'];
 			}
+
+			/** Why a result was found, when its title and excerpt do not show it (MVS_Reason). */
+			$result['reason'] = apply_filters(
+				'mavo_search_reason',
+				MVS_Reason::explain( $hit, $content[ $hit['doc_id'] ] ?? [], (string) ( $result['excerpt'] ?? '' ), $parsed ),
+				$hit['post_id'],
+				$parsed
+			);
 
 			if ( $args['explain'] ) {
 				$result['debug'] = $ranking['explain'][ $hit['doc_id'] ] ?? [];
@@ -533,7 +541,7 @@ class MVS_Engine {
 		return $out;
 	}
 
-	/** @return array<int,array{content:string,excerpt:string}> */
+	/** @return array<int,array{title:string,content:string,excerpt:string,alts:string}> */
 	private static function texts( array $doc_ids ): array {
 		global $wpdb;
 
@@ -543,12 +551,17 @@ class MVS_Engine {
 
 		$out  = [];
 		$rows = (array) $wpdb->get_results(
-			'SELECT doc_id, content, excerpt FROM ' . MVS_DB::docs() . ' WHERE doc_id IN (' . MVS_DB::in_ints( $doc_ids ) . ')',
+			'SELECT doc_id, title, content, excerpt, alts FROM ' . MVS_DB::docs() . ' WHERE doc_id IN (' . MVS_DB::in_ints( $doc_ids ) . ')',
 			ARRAY_A
 		);
 
 		foreach ( $rows as $row ) {
-			$out[ (int) $row['doc_id'] ] = [ 'content' => (string) $row['content'], 'excerpt' => (string) $row['excerpt'] ];
+			$out[ (int) $row['doc_id'] ] = [
+				'title'   => (string) $row['title'],
+				'content' => (string) $row['content'],
+				'excerpt' => (string) $row['excerpt'],
+				'alts'    => (string) $row['alts'],
+			];
 		}
 
 		return $out;

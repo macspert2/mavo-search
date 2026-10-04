@@ -25,8 +25,10 @@ class MVS_DB {
 	 * maybe_upgrade() re-runs dbDelta on sites that already have the tables.
 	 *
 	 * 2 — the clicks table (2026-10-04).
+	 * 3 — docs.alts, the alt texts quoted by "why this matched" (2026-10-04).
+	 *     Filled by the rebuild the upgrade starts (MVS_Indexer::VERSION 2).
 	 */
-	const DB_VERSION        = 2;
+	const DB_VERSION        = 3;
 	const DB_VERSION_OPTION = 'mavo_search_db_version';
 
 	/** The terms columns, in order. Text fields count; the others weigh. */
@@ -59,11 +61,21 @@ class MVS_DB {
 	}
 
 	public static function maybe_upgrade(): void {
-		if ( (int) get_option( self::DB_VERSION_OPTION, 0 ) === self::DB_VERSION ) {
+		$installed = (int) get_option( self::DB_VERSION_OPTION, 0 );
+
+		if ( $installed === self::DB_VERSION ) {
 			return;
 		}
 
 		self::install();
+
+		// An index built before docs.alts existed has every document stale
+		// (the indexer's version moved with it): refill it in the background
+		// rather than wait for someone to press "Rebuild". Searches keep
+		// being answered meanwhile.
+		if ( $installed > 0 && $installed < 3 && MVS_WP::ready() ) {
+			MVS_Rebuild::start_background();
+		}
 	}
 
 	public static function install(): void {
@@ -95,6 +107,7 @@ class MVS_DB {
 			title_norm    TEXT NOT NULL,
 			excerpt       TEXT NOT NULL,
 			content       MEDIUMTEXT NOT NULL,
+			alts          TEXT NOT NULL,
 			boost         DECIMAL(5,3) NOT NULL DEFAULT 1.000,
 			signals       TEXT NOT NULL,
 			post_date     DATETIME NULL DEFAULT NULL,

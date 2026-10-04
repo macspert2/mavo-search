@@ -60,7 +60,7 @@ class Test_WPDB {
 			CREATE TABLE wp_term_relationships ( object_id INTEGER, term_taxonomy_id INTEGER );
 
 			CREATE TABLE wp_mavo_search_docs ( doc_id INTEGER PRIMARY KEY AUTOINCREMENT, post_id INTEGER UNIQUE, lang TEXT, post_type TEXT,
-				title TEXT, title_norm TEXT, excerpt TEXT, content TEXT, boost REAL DEFAULT 1, signals TEXT DEFAULT '{}',
+				title TEXT, title_norm TEXT, excerpt TEXT, content TEXT, alts TEXT DEFAULT '', boost REAL DEFAULT 1, signals TEXT DEFAULT '{}',
 				post_date TEXT, post_modified TEXT, source_hash TEXT DEFAULT '', rules_version TEXT DEFAULT '',
 				status TEXT DEFAULT 'indexed', error TEXT DEFAULT '', indexed_at TEXT );
 			CREATE TABLE wp_mavo_search_terms ( doc_id INTEGER, term TEXT, lang TEXT $fields, PRIMARY KEY ( doc_id, term ) );
@@ -277,6 +277,7 @@ function wp_enqueue_script( ...$a ) { $GLOBALS['MOCK_SCRIPTS'][] = $a[0]; }
 function wp_localize_script( $h, $name, $data ) { $GLOBALS['MOCK_LOCALIZED'][ $name ] = $data; }
 function register_rest_route( $ns, $route, $args ) { $GLOBALS['MOCK_ROUTES'][ "$ns$route" ] = $args; }
 class WP_REST_Response { public $data; public $status; public function __construct( $data = null, $status = 200 ) { $this->data = $data; $this->status = $status; } }
+function get_post_field( $field, $post ) { $p = get_post( $post ); return $p ? (string) ( $p->$field ?? '' ) : ''; }
 function get_post_type( $id ) { $p = get_post( $id ); return $p ? $p->post_type : false; }
 
 function update_meta_cache( $type, $ids ) {
@@ -379,6 +380,7 @@ require MVS_PLUGIN_DIR . 'includes/class-mavo-search-best-bets.php';
 require MVS_PLUGIN_DIR . 'includes/class-mavo-search-engine.php';
 require MVS_PLUGIN_DIR . 'includes/class-mavo-search-highlight.php';
 require MVS_PLUGIN_DIR . 'includes/class-mavo-search-excerpt.php';
+require MVS_PLUGIN_DIR . 'includes/class-mavo-search-reason.php';
 require MVS_PLUGIN_DIR . 'includes/class-mavo-search-status.php';
 require MVS_PLUGIN_DIR . 'includes/class-mavo-search-rebuild.php';
 require MVS_PLUGIN_DIR . 'includes/class-mavo-search-sync.php';

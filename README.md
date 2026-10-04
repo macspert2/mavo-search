@@ -109,7 +109,7 @@ Filters: `mavo_search_search_ok`, `mavo_search_query`, `mavo_search_parsed_query
 `mavo_search_document_boost`, `mavo_search_places`, `mavo_search_hubs`,
 `mavo_search_guide_places`, `mavo_search_score`, `mavo_search_results`, `mavo_search_hits`,
 `mavo_search_excerpt`, `mavo_search_excerpt_length`, `mavo_search_replace_excerpt`,
-`mavo_search_highlight_query`, `mavo_search_highlight_html`, `mavo_search_image_concepts`, `mavo_search_synonyms`,
+`mavo_search_highlight_query`, `mavo_search_highlight_html`, `mavo_search_image_concepts`, `mavo_search_reason`, `mavo_search_synonyms`,
 `mavo_search_stopwords`, `mavo_search_log_enabled`.
 
 Also: `mavo_search_best_bets`, `mavo_search_suggestions`.
@@ -131,6 +131,10 @@ Coming from Relevanssi: `docs/relevanssi-compat.md`.
   (`mavo_search_suggestions()`), falling back to the hand-written line;
   below it, the visitor's own recent searches, filled in the browser from
   mavo-for-you's profile.
+- A result whose title and excerpt do not show why it was found gets one
+  muted line saying so — *Lieu : Lefkada (Grèce)*, *Thème : Harry Potter*,
+  *Photo : « Le phare de Chania »*, *Mot-clé : …*, *Notre sélection* — from
+  the result's `reason`; skipped when the tile's place badge already says it.
 - Result tiles carry `mavo_search_result_attributes()`, and
   `assets/clicks.js` counts clicks on them and on the photo row.
 - A query that is exactly an image concept gets one row of photos from

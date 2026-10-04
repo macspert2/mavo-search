@@ -36,7 +36,7 @@ defined( 'ABSPATH' ) || exit;
  * }
  * @return array{query:string,lang:string,total:int,page:int,per_page:int,pages:int,fallback:string,
  *               missing_words:string[],results:array<int,array{post_id:int,score:float,matched_terms:string[],matched_fields:string[],
- *               matched_image_concepts:string[],image_alt_only:bool,places:int[],hubs:int[],excerpt?:string,
+ *               matched_image_concepts:string[],image_alt_only:bool,places:int[],hubs:int[],reason:?array,excerpt?:string,
  *               excerpt_source?:string,debug?:array}>,parsed?:array}
  *         fallback: 'none', or 'or' when the results only match some of the words;
  *         missing_words: the query's words (as typed) found in no document at all.
@@ -60,7 +60,9 @@ function mavo_search_parse_query( string $query, ?string $lang = null ): array {
 
 /**
  * The current search's result for a post in the loop: score, matched terms
- * and fields, matched image concepts, places, hubs, excerpt. Null outside a
+ * and fields, matched image concepts, places, hubs, excerpt, and 'reason' —
+ * why it was found when its title and excerpt do not show it (see
+ * MVS_Reason: guide, place, hub, photo, tag, pinned), else null. Null outside a
  * search answered by Mavo Search.
  *
  * @param int|WP_Post|null $post Default the loop's post.

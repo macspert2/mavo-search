@@ -27,6 +27,7 @@ Consumer documentation is in `README.md`; Relevanssi specifics in
 | `includes/class-mavo-search-engine.php` | `MVS_Engine`: ranking, AND/OR, bonuses, explanation, paging, cache |
 | `includes/class-mavo-search-highlight.php` | `MVS_Highlight`: marks in text and HTML |
 | `includes/class-mavo-search-excerpt.php` | `MVS_Excerpt`: best window, summary fallback |
+| `includes/class-mavo-search-reason.php` | `MVS_Reason`: why a result was found, when the tile does not show it |
 | `includes/class-mavo-search-status.php` | `MVS_Status`: current / stale / missing / failed / orphans, in SQL |
 | `includes/class-mavo-search-rebuild.php` | `MVS_Rebuild`: cursor batches for admin, CLI and the background build |
 | `includes/class-mavo-search-sync.php` | `MVS_Sync`: incremental hooks, shutdown flush, cron overflow |
@@ -232,6 +233,23 @@ Brainstorm items 1, 8 and 12, chosen by the user.
   `data-post-id` for this). Not used in ranking; reports show clicks per
   query, average rank clicked, and "searched, never clicked".
 
+## Why this matched (2026-10-04)
+
+User's choices: only for results that do not show their match, as a muted
+line under the excerpt (not the eyebrow), skipped when the place badge
+already names the place, quoting the photo's alt text.
+
+`MVS_Reason` gives one reason — guide, place, hub, photo, tag, pinned, first
+that applies — when no matched word is in the title or highlighted in the
+excerpt. The theme words it (`mv_search_reason_text()`, `.mv-search-reason`).
+Synonyms and longer forms need none: the highlighter marks them.
+
+Quoting a photo needs its alt text, which the term index does not keep, so
+documents gained an `alts` column (schema 3) and tag names in `signals`
+(indexer version 2). The upgrade starts a background rebuild to fill them;
+until it reaches a document, a photo match shows its concept label or
+nothing.
+
 ## Ranking, in one place
 
 ```
@@ -256,7 +274,7 @@ lookups are index ranges on `(term, lang)`.
 ## Tests
 
 `tests/run.sh` runs each `test-*.php` in its own process against an in-memory
-SQLite `$wpdb` (`tests/harness.php`): 278 assertions over text, ranking (the
+SQLite `$wpdb` (`tests/harness.php`): 290 assertions over text, ranking (the
 representative queries of agent.md), excerpts and highlighting, the
 `posts_pre_query` integration and logging, incremental sync and status, the
 admin page, WP-CLI, and a site with none of the integrations.
