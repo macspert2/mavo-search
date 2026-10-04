@@ -94,6 +94,7 @@ mavo_search_the_title();                  // title with the query's words marked
 | `mavo_search_parse_query( $query, $lang )` | Word groups and variants, quoted phrases, image `concepts` — e.g. to link `mavo_image_results_url( $concept )` |
 | `mavo_search_image_concepts( $query, $lang )` | The one concept the query is *entirely* about ("bunte Häuser" → `colourful_houses`, not `house`; "plage lefkada" → none), for a photo row |
 | `mavo_search_suggestions( $lang, $limit )` | Queries worth suggesting: searched often lately (and this time last year), with plenty of exact results, minus "never suggest" and the current search |
+| `mavo_search_related( $query, $lang, $limit )` | Proven searches sharing a word with this one ("londres famille" for "Londres"), most words in common first |
 | `mavo_search_url( $query, $lang )` | The search URL in a language (`/en/?s=…`) |
 | `mavo_search_result_attributes( $post )` | `data-mavo-search-*` attributes for a result tile, so its clicks are counted |
 | `mavo_search_did_you_mean( $query, $lang )` | The query with unknown words corrected ("lisbone" → "lisbonne"), only if that finds exact results; else `''` |
@@ -115,7 +116,7 @@ Filters: `mavo_search_search_ok`, `mavo_search_query`, `mavo_search_parsed_query
 `mavo_search_highlight_query`, `mavo_search_highlight_html`, `mavo_search_image_concepts`, `mavo_search_reason`, `mavo_search_guides`, `mavo_search_synonyms`,
 `mavo_search_stopwords`, `mavo_search_log_enabled`.
 
-Also: `mavo_search_best_bets`, `mavo_search_suggestions`.
+Also: `mavo_search_best_bets`, `mavo_search_suggestions`, `mavo_search_related`.
 
 REST: `POST /wp-json/mavo-search/v1/click` (q, lang, post, rank, source) — the click counter.
 
@@ -130,8 +131,10 @@ Coming from Relevanssi: `docs/relevanssi-compat.md`.
   (`mavo_search_result_image()`), else its featured image.
 - Partial matches are said plainly under the search box, naming the word
   left out (`missing_words`).
-- "Try for example" lists searches visitors really make
-  (`mavo_search_suggestions()`), falling back to the hand-written line;
+- The line under the search box is links: related searches when the log
+  has some (`mavo_search_related()`), else popular ones
+  (`mavo_search_suggestions()`) topped up with the hand-written examples of
+  Réglages MaVo — each labelled for what it is;
   below it, the visitor's own recent searches, filled in the browser from
   mavo-for-you's profile.
 - A result whose title and excerpt do not show why it was found gets one

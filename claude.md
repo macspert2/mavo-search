@@ -216,6 +216,13 @@ Brainstorm items 1, 8 and 12, chosen by the user.
   `.mv-badge` links and keeps its hand-written line until there are three.
   The log is young: Relevanssi's own log (`wp_relevanssi_log`, no language
   column) was not imported; seasonal suggestions start a year from now.
+- **Related searches** (2026-10-04): the same proven list, filtered to
+  queries sharing a word (folded, not a stopword) with the current one.
+  The theme prefers them ("Recherches associées"), else shows proven
+  searches ("Recherches fréquentes", once three exist) or its hand-written
+  examples ("Essayez par exemple"), each list topped up with the other and
+  all of them links. Verifying the hand-written examples against the index
+  was offered and declined.
 - **Personal suggestions** stay in the browser: the theme's
   `js/mv-search-recent.js` reads `window.mavoForYou.session()` (mavo-for-you's
   public JS face, not its storage format) and shows this visit's other
@@ -309,7 +316,7 @@ lookups are index ranges on `(term, lang)`.
 ## Tests
 
 `tests/run.sh` runs each `test-*.php` in its own process against an in-memory
-SQLite `$wpdb` (`tests/harness.php`): 342 assertions over text, ranking (the
+SQLite `$wpdb` (`tests/harness.php`): 351 assertions over text, ranking (the
 representative queries of agent.md), excerpts and highlighting, the
 `posts_pre_query` integration and logging, incremental sync and status, the
 admin page, WP-CLI, and a site with none of the integrations.

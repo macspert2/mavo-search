@@ -59,4 +59,24 @@ same( 'filter', 'road trip', MVS_Suggest::for_lang( 'fr' )[0] );
 
 same( 'search URL, encoded', 'https://example.test/?s=' . rawurlencode( 'où dormir' ), mavo_search_url( 'où dormir', 'fr' ) );
 
+/* ------------------------------------------------------------- related */
+
+logged( 'londres famille', 5, 12 );
+logged( 'où dormir à londres', 4, 6 );
+logged( 'harry potter londres', 3, 7 );
+logged( 'londres en famille avec ados', 3, 9 );
+MVS_Cache::bump();
+
+same( 'sharing a word, most in common first, then most searched; never the query itself', [ 'londres en famille avec ados', 'londres', 'où dormir à londres', 'harry potter londres' ], mavo_search_related( 'Londres famille', 'fr' ) );
+same( 'one word', [ 'londres famille', 'où dormir à londres', 'harry potter londres', 'londres en famille avec ados' ], mavo_search_related( 'LONDRES', 'fr' ) );
+same( 'accents do not matter', [ 'londres famille', 'londres en famille avec ados' ], mavo_search_related( 'famillé', 'fr' ) );
+same( 'stopwords do not relate', [], mavo_search_related( 'avec', 'fr' ) );
+same( 'unproven queries never appear', [], mavo_search_related( 'zanzibar', 'fr' ) );
+same( 'limit', [ 'londres famille' ], mavo_search_related( 'londres', 'fr', 1 ) );
+same( 'per language', [], mavo_search_related( 'londres', 'en' ) );
+MVS_Suggest::save_blocked( 'potter' );
+check( 'blocked ones never appear', ! in_array( 'harry potter londres', mavo_search_related( 'londres', 'fr' ), true ) );
+$GLOBALS['MOCK_SEARCH'] = 'londres';
+same( 'current search by default', 'londres famille', mavo_search_related()[0] ?? null );
+
 done();

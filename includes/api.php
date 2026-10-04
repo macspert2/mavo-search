@@ -136,6 +136,19 @@ function mavo_search_suggestions( ?string $lang = null, int $limit = 6 ): array 
 	return MVS_Suggest::for_lang( MVS_Lang::resolve( $lang ), $limit, $current );
 }
 
+/**
+ * Proven searches related to the current (or given) one: they share a word
+ * with it — "londres famille" for "Londres". Same bar as
+ * mavo_search_suggestions(); [] when there are none yet.
+ *
+ * @return string[]
+ */
+function mavo_search_related( ?string $query = null, ?string $lang = null, int $limit = 6 ): array {
+	$query = $query ?? ( function_exists( 'get_search_query' ) ? (string) get_search_query( false ) : '' );
+
+	return '' === trim( $query ) ? [] : MVS_Suggest::related( $query, MVS_Lang::resolve( $lang ), $limit );
+}
+
 /** The search URL for a query in a language: /?s=… or /en/?s=…. */
 function mavo_search_url( string $query, ?string $lang = null ): string {
 	$lang = MVS_Lang::resolve( $lang );

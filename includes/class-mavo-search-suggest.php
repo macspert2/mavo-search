@@ -51,6 +51,64 @@ class MVS_Suggest {
 		return array_slice( array_values( (array) apply_filters( 'mavo_search_suggestions', $list, $lang ) ), 0, max( 0, $limit ) );
 	}
 
+	/**
+	 * Proven searches that share a word with this one — "londres famille",
+	 * "où dormir à londres" for "Londres" — most words in common first, then
+	 * most searched. Never the query itself (folded), never a blocked one.
+	 *
+	 * @return string[]
+	 */
+	public static function related( string $query, string $lang, int $limit = 6 ): array {
+		$mine = array_values( array_unique( array_filter(
+			MVS_Text::tokens( MVS_Query::clean( $query ) ),
+			static fn( $t ) => mb_strlen( $t, 'UTF-8' ) >= 3 && MVS_Text::indexable( $t, $lang )
+		) ) );
+
+		if ( ! $mine ) {
+			return [];
+		}
+
+		$self  = MVS_Text::normalize( $query );
+		$found = [];
+
+		foreach ( self::proven( $lang ) as $i => $candidate ) {
+			$norm = MVS_Text::normalize( $candidate );
+
+			if ( $norm === $self ) {
+				continue;
+			}
+
+			$shared = count( array_intersect( $mine, explode( ' ', $norm ) ) );
+
+			if ( $shared > 0 ) {
+				$found[] = [ $shared, $i, $candidate ];
+			}
+		}
+
+		usort( $found, static fn( $a, $b ) => [ $b[0], $a[1] ] <=> [ $a[0], $b[1] ] );
+
+		/** Related searches for a query, best first. */
+		return array_slice( array_values( (array) apply_filters( 'mavo_search_related', array_column( $found, 2 ), $query, $lang ) ), 0, max( 0, $limit ) );
+	}
+
+	/**
+	 * Every proven search of the last 60 days in a language, most searched
+	 * first, deduped and filtered — cached for the day.
+	 *
+	 * @return string[]
+	 */
+	public static function proven( string $lang ): array {
+		$key  = 'proven:' . $lang . ':' . current_time( 'Y-m-d' );
+		$list = MVS_Cache::get( $key );
+
+		if ( ! is_array( $list ) ) {
+			$list = self::merge( self::top( $lang, time() - self::DAYS * DAY_IN_SECONDS, time(), 500 ) );
+			MVS_Cache::set( $key, $list );
+		}
+
+		return $list;
+	}
+
 	/** @return string[] The "never suggest" lines. */
 	public static function blocked(): array {
 		return array_values( array_filter( array_map( 'trim', (array) get_option( self::BLOCK_OPTION, [] ) ) ) );
