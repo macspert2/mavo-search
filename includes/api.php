@@ -98,6 +98,50 @@ function mavo_search_image_concepts( ?string $query = null, ?string $lang = null
 }
 
 /**
+ * Attributes for a result tile, so its clicks are counted: print them on
+ * the element wrapping the result's link(s). '' outside a search answered by
+ * Mavo Search. Already escaped.
+ *
+ *   <article <?php echo mavo_search_result_attributes(); ?>>
+ *
+ * A photo row is counted when its container has the class
+ * "mavo-search-photos" and each tile carries data-post-id (mavo-image-index's
+ * rows do).
+ */
+function mavo_search_result_attributes( $post = null ): string {
+	$post = get_post( $post );
+	$hit  = $post ? MVS_WP::hit( (int) $post->ID ) : null;
+
+	if ( ! $hit ) {
+		return '';
+	}
+
+	return sprintf( 'data-mavo-search-post="%d" data-mavo-search-rank="%d"', (int) $hit['post_id'], (int) $hit['rank'] );
+}
+
+/**
+ * Queries worth suggesting in a language: searched often lately (and around
+ * this time last year), with plenty of exact results, minus the "never
+ * suggest" list and the current search. Lowercased, as visitors typed them.
+ * Fewer than three: keep a hand-written fallback.
+ *
+ * @return string[]
+ */
+function mavo_search_suggestions( ?string $lang = null, int $limit = 6 ): array {
+	$current = function_exists( 'get_search_query' ) ? (string) get_search_query( false ) : '';
+
+	return MVS_Suggest::for_lang( MVS_Lang::resolve( $lang ), $limit, $current );
+}
+
+/** The search URL for a query in a language: /?s=… or /en/?s=…. */
+function mavo_search_url( string $query, ?string $lang = null ): string {
+	$lang = MVS_Lang::resolve( $lang );
+	$base = function_exists( 'pll_home_url' ) ? (string) pll_home_url( $lang ) : home_url( '/' );
+
+	return add_query_arg( 's', rawurlencode( $query ), $base );
+}
+
+/**
  * The image to show for a result: the post's photo best matching the image
  * concepts the query named (via mavo-image-index), else its featured image.
  * Never changes the featured image itself. 0 when there is neither.

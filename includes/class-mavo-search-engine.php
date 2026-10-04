@@ -106,9 +106,11 @@ class MVS_Engine {
 		$content  = $args['excerpts'] ? self::texts( array_column( $slice, 'doc_id' ) ) : [];
 		$results  = [];
 
-		foreach ( $slice as $hit ) {
+		foreach ( $slice as $i => $hit ) {
 			$result = [
 				'post_id'                => $hit['post_id'],
+				'rank'                   => ( $page - 1 ) * $per_page + $i + 1,
+				'pinned'                 => ! empty( $hit['pinned'] ),
 				'score'                  => $hit['score'],
 				'matched_terms'          => $hit['terms'],
 				'matched_fields'         => $hit['fields'],
@@ -181,6 +183,7 @@ class MVS_Engine {
 		}
 
 		$ranking = self::rank( $parsed, $types, (bool) ( $args['fallback'] ?? true ), $explain );
+		$ranking = MVS_Best_Bets::apply( $ranking, $parsed, $types, $explain );
 
 		if ( ! $explain ) {
 			MVS_Cache::set( $key, $ranking );

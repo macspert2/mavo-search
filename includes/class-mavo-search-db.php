@@ -9,6 +9,7 @@
  *          per field — how often the term occurs in the title, the text, the
  *          alt text… (or, for place / hub / concept, how strongly: 0–100)
  *   log    one row per normalized query × language × day
+ *   clicks one row per query × language × day × clicked post × source
  *
  * One row per term with a column per field, as Relevanssi does, rather than
  * agent.md's row per term × field: a lookup is one index range per term
@@ -22,8 +23,10 @@ class MVS_DB {
 	/**
 	 * Bump whenever install()'s CREATE TABLE statements change, so
 	 * maybe_upgrade() re-runs dbDelta on sites that already have the tables.
+	 *
+	 * 2 — the clicks table (2026-10-04).
 	 */
-	const DB_VERSION        = 1;
+	const DB_VERSION        = 2;
 	const DB_VERSION_OPTION = 'mavo_search_db_version';
 
 	/** The terms columns, in order. Text fields count; the others weigh. */
@@ -43,6 +46,11 @@ class MVS_DB {
 	public static function log(): string {
 		global $wpdb;
 		return $wpdb->prefix . 'mavo_search_log';
+	}
+
+	public static function clicks(): string {
+		global $wpdb;
+		return $wpdb->prefix . 'mavo_search_clicks';
 	}
 
 	/** @return string[] Every per-field column of the terms table. */
@@ -122,6 +130,21 @@ $columns			PRIMARY KEY  (doc_id, term),
 			UNIQUE KEY query_lang_day (query, lang, day),
 			KEY day (day),
 			KEY results (results)
+		) $charset_collate;" );
+
+		dbDelta( 'CREATE TABLE ' . self::clicks() . " (
+			id         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+			query      VARCHAR(191) NOT NULL,
+			lang       VARCHAR(10) NOT NULL,
+			day        DATE NOT NULL,
+			post_id    BIGINT UNSIGNED NOT NULL,
+			source     VARCHAR(10) NOT NULL DEFAULT 'result',
+			clicks     INT UNSIGNED NOT NULL DEFAULT 0,
+			rank_total INT UNSIGNED NOT NULL DEFAULT 0,
+			PRIMARY KEY  (id),
+			UNIQUE KEY query_lang_day_post (query, lang, day, post_id, source),
+			KEY day (day),
+			KEY post_id (post_id)
 		) $charset_collate;" );
 
 		update_option( self::DB_VERSION_OPTION, self::DB_VERSION );

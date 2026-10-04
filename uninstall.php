@@ -2,14 +2,14 @@
 /**
  * Deleting the plugin (not deactivating it) removes its tables and options.
  * The index is derived from posts, so a reinstall rebuilds it by itself; only
- * the search log is lost.
+ * the search log, click counts, best bets and the "never suggest" list are lost.
  */
 
 defined( 'WP_UNINSTALL_PLUGIN' ) || exit;
 
 global $wpdb;
 
-foreach ( [ 'mavo_search_docs', 'mavo_search_terms', 'mavo_search_log' ] as $table ) {
+foreach ( [ 'mavo_search_docs', 'mavo_search_terms', 'mavo_search_log', 'mavo_search_clicks' ] as $table ) {
 	$wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}{$table}" ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery
 }
 
@@ -21,6 +21,8 @@ foreach ( [
 	'mavo_search_background',
 	'mavo_search_queue',
 	'mavo_search_log_enabled',
+	'mavo_search_best_bets',
+	'mavo_search_suggest_block',
 ] as $option ) {
 	delete_option( $option );
 }

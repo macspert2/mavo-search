@@ -136,8 +136,21 @@ class MVS_WP {
 	}
 
 	public static function enqueue(): void {
-		if ( is_search() && self::ready() ) {
-			wp_enqueue_style( 'mavo-search', MVS_PLUGIN_URL . 'assets/search.css', [], MVS_VERSION );
+		if ( ! is_search() || ! self::ready() ) {
+			return;
+		}
+
+		wp_enqueue_style( 'mavo-search', MVS_PLUGIN_URL . 'assets/search.css', [], MVS_VERSION );
+
+		// Click counting (MVS_Clicks): only on a search answered here, and not
+		// for the people who edit the site — the log leaves them out too.
+		if ( null !== self::$last && MVS_Log::enabled() && ! current_user_can( 'edit_posts' ) ) {
+			wp_enqueue_script( 'mavo-search-clicks', MVS_PLUGIN_URL . 'assets/clicks.js', [], MVS_VERSION, true );
+			wp_localize_script( 'mavo-search-clicks', 'MAVO_SEARCH_CLICKS', [
+				'endpoint' => rest_url( MVS_Clicks::REST_NS . '/click' ),
+				'query'    => self::$last['query'],
+				'lang'     => self::$last['lang'],
+			] );
 		}
 	}
 

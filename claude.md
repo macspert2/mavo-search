@@ -32,11 +32,14 @@ Consumer documentation is in `README.md`; Relevanssi specifics in
 | `includes/class-mavo-search-sync.php` | `MVS_Sync`: incremental hooks, shutdown flush, cron overflow |
 | `includes/class-mavo-search-cache.php` | `MVS_Cache`: ranked lists under a generation number |
 | `includes/class-mavo-search-log.php` | `MVS_Log`: daily per-query counters, reports, pruning |
+| `includes/class-mavo-search-clicks.php` | `MVS_Clicks`: click counts, the REST endpoint, click reports |
+| `includes/class-mavo-search-best-bets.php` | `MVS_Best_Bets`: pinned posts per query |
+| `includes/class-mavo-search-suggest.php` | `MVS_Suggest`: suggestions from the log, "never suggest" |
 | `includes/class-mavo-search-wp.php` | `MVS_WP`: `posts_pre_query`, Relevanssi standing aside, search CSS |
 | `includes/class-mavo-search-admin.php` | Tools → Mavo Search (admin only) |
 | `includes/class-mavo-search-cli.php` | `wp mavo-search` (WP-CLI only) |
 | `data/stopwords.php`, `data/synonyms.php` | Short per-language lists |
-| `assets/` | `search.css` (front end, search pages), `admin.css`, `admin.js` |
+| `assets/` | `search.css` and `clicks.js` (front end, search pages), `admin.css`, `admin.js` |
 | `tests/` | `run.sh`; SQLite-backed harness; `bench.php` |
 
 Class prefix `MVS_`, text domain `mavo-search`, admin code loaded only in
@@ -63,7 +66,7 @@ for every query this plugin serves, so the two never both run.
 ### 2. No Relevanssi shims (user's decision, 2026-10-04)
 
 The audit found no `relevanssi_*()` call anywhere and one filter
-(`relevanssi_orderby` in the theme, dead after the switch). Following the
+(`relevanssi_orderby` in the theme, dead after the switch and removed on 2026-10-04). Following the
 estate's rule — mavo-hubs §11: a shim nobody calls only makes wrong output
 look right — none of agent.md's wrappers or legacy hooks exist. The
 compatibility document maps each to its native equivalent instead.
@@ -198,6 +201,37 @@ and honest partial results. Presentation stays in the theme
   above the articles — the "group, don't mix" idea, as the user asked.
 - **Thumbnails**: unchanged API; the theme now calls it.
 
+## Suggestions, best bets, click counts (2026-10-04)
+
+Brainstorm items 1, 8 and 12, chosen by the user.
+
+- **Suggestions** (`MVS_Suggest`): only *proven* searches — searched ≥ 3 times
+  in 60 days, ≥ 5 results, never a fallback — not merely popular ones (a
+  popular zero-result query is the worst thing to suggest). Up to two from
+  the same ±3 weeks last year come first; spellings folding to the same
+  words count once; a "never suggest" list blocks any query containing a
+  listed word. Cached per language per day. The theme renders them as
+  `.mv-badge` links and keeps its hand-written line until there are three.
+  The log is young: Relevanssi's own log (`wp_relevanssi_log`, no language
+  column) was not imported; seasonal suggestions start a year from now.
+- **Personal suggestions** stay in the browser: the theme's
+  `js/mv-search-recent.js` reads `window.mavoForYou.session()` (mavo-for-you's
+  public JS face, not its storage format) and shows this visit's other
+  searches. Nothing is sent; the script depends on mavo-for-you's handle, so
+  WordPress prints neither without it.
+- **Best bets** (`MVS_Best_Bets`): an option edited as text lines, like
+  mavo-image-index's link targets. Exact normalized match, per post language,
+  applied after ranking and cached with it (saving bumps the cache). A pin
+  the ranking did not find is added; a pin turns a fallback with no other
+  results into an answer.
+- **Click counts** (`MVS_Clicks`): one row per query × language × day × post
+  × source with a counter and summed rank — the log's shape, the log's
+  switch, nothing about the visitor. `navigator.sendBeacon` to an open REST
+  route that validates everything it can. Sources: result, pinned (decided
+  server-side from the best bets), photos (mavo-image-index tiles carry
+  `data-post-id` for this). Not used in ranking; reports show clicks per
+  query, average rank clicked, and "searched, never clicked".
+
 ## Ranking, in one place
 
 ```
@@ -222,7 +256,7 @@ lookups are index ranges on `(term, lang)`.
 ## Tests
 
 `tests/run.sh` runs each `test-*.php` in its own process against an in-memory
-SQLite `$wpdb` (`tests/harness.php`): 223 assertions over text, ranking (the
+SQLite `$wpdb` (`tests/harness.php`): 278 assertions over text, ranking (the
 representative queries of agent.md), excerpts and highlighting, the
 `posts_pre_query` integration and logging, incremental sync and status, the
 admin page, WP-CLI, and a site with none of the integrations.

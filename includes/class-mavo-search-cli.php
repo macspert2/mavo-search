@@ -324,6 +324,45 @@ class MVS_CLI {
 		WP_CLI\Utils\format_items( $assoc['format'] ?? 'table', $rows, [ 'query', 'lang', 'searches', 'results', 'fallback', 'last' ] );
 	}
 
+	/**
+	 * Which results visitors click.
+	 *
+	 * ## OPTIONS
+	 *
+	 * [--unclicked]
+	 * : Queries searched at least twice with results, never clicked.
+	 *
+	 * [--days=<n>]
+	 * ---
+	 * default: 30
+	 * ---
+	 *
+	 * [--lang=<lang>]
+	 *
+	 * [--limit=<n>]
+	 * ---
+	 * default: 50
+	 * ---
+	 *
+	 * [--format=<format>]
+	 * ---
+	 * default: table
+	 * ---
+	 */
+	public function clicks( $args, $assoc ) {
+		$days  = max( 1, (int) ( $assoc['days'] ?? 30 ) );
+		$lang  = MVS_Lang::normalize( $assoc['lang'] ?? null );
+		$limit = max( 1, (int) ( $assoc['limit'] ?? 50 ) );
+
+		if ( ! empty( $assoc['unclicked'] ) ) {
+			WP_CLI\Utils\format_items( $assoc['format'] ?? 'table', MVS_Clicks::unclicked( $days, $lang, $limit ), [ 'query', 'lang', 'searches', 'results' ] );
+			return;
+		}
+
+		WP_CLI\Utils\format_items( $assoc['format'] ?? 'table', MVS_Clicks::report( $days, $lang, $limit ), [ 'query', 'lang', 'searches', 'clicks', 'avg_rank', 'top_post', 'top_clicks' ] );
+		WP_CLI::line( 'By source: ' . wp_json_encode( MVS_Clicks::by_source( $days ) ) );
+	}
+
 	/* -------------------------------------------------------------- private */
 
 	private static function print_parsed( array $parsed ): void {

@@ -16,7 +16,7 @@ snippets involved (confirmed by the site owner).
 
 | Found | Where | Status after the switch |
 |---|---|---|
-| `add_filter( 'relevanssi_orderby', 'rlv_fix_order' )` | `mavo26-child/functions.php` | Dead code: Mavo Search always ranks by relevance. Harmless; remove once Relevanssi is uninstalled. |
+| `add_filter( 'relevanssi_orderby', 'rlv_fix_order' )` | `mavo26-child/functions.php` | Removed 2026-10-04: Mavo Search always ranks by relevance. |
 | CSS for Relevanssi highlighting | — | None. Relevanssi used inline `color: #ff0000` (setting *highlight: text colour*). |
 | Search template | `content.php` `is_search()` branch | Unchanged. It shows `get_the_excerpt()`, which now carries Mavo Search's excerpt. |
 | Function calls `relevanssi_*()` | — | None anywhere. |
@@ -83,5 +83,5 @@ active.
    Tools → Mavo Search → Test a search.
 4. Deactivate Relevanssi when satisfied. **Rollback**: reactivate Relevanssi,
    deactivate Mavo Search.
-5. Later: uninstall Relevanssi (drops its tables) and remove `rlv_fix_order`
-   from the theme.
+5. Later: uninstall Relevanssi (drops its tables). `rlv_fix_order` is
+   already gone from the theme.

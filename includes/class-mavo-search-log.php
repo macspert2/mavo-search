@@ -35,10 +35,15 @@ class MVS_Log {
 		return (bool) apply_filters( 'mavo_search_log_enabled', '0' !== (string) get_option( self::ENABLED_OPTION, '1' ) );
 	}
 
+	/** A query as the log and the click counts store it: lowercased, trimmed, accents kept. */
+	public static function key( string $query ): string {
+		return mb_substr( mb_strtolower( MVS_Query::clean( $query ), 'UTF-8' ), 0, 191, 'UTF-8' );
+	}
+
 	public static function record( string $query, string $lang, int $results, string $fallback = 'none' ): void {
 		global $wpdb;
 
-		$query = mb_substr( mb_strtolower( MVS_Query::clean( $query ), 'UTF-8' ), 0, 191, 'UTF-8' );
+		$query = self::key( $query );
 
 		if ( '' === $query || ! self::enabled() ) {
 			return;

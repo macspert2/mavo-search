@@ -24,7 +24,12 @@ with the query's words marked `<mark class="mavo-search-highlight">`.
   Rollback: reactivate Relevanssi, deactivate Mavo Search.
 - Tools → Mavo Search → **Test a search** shows any query's ranking with
   every point explained, and what visitors searched for (no results, few
-  results, partial matches only).
+  results, partial matches only) and clicked.
+- **Best bets** (same screen): "query = post ID, post ID" pins posts first
+  for that exact query, in their own language. Work from the no-result and
+  partial-match reports.
+- **Never suggest** (same screen): words or phrases kept out of the
+  suggestions under the search box.
 
 ```bash
 wp mavo-search status
@@ -33,6 +38,7 @@ wp mavo-search search "où dormir à Londres" [--lang=fr] [--explain] [--excerpt
 wp mavo-search explain "londres" --post=123
 wp mavo-search terms --post=123 [--field=place]
 wp mavo-search logs [--zero | --low | --fallback] [--days=30] [--lang=de]
+wp mavo-search clicks [--unclicked] [--days=30] [--lang=fr]
 ```
 
 ## What is searched
@@ -87,6 +93,9 @@ mavo_search_the_title();                  // title with the query's words marked
 | `mavo_search( $query, $args )` | Ranked results with excerpts; `$args`: lang, page, per_page, post_types, excerpts, fallback, explain |
 | `mavo_search_parse_query( $query, $lang )` | Word groups and variants, quoted phrases, image `concepts` — e.g. to link `mavo_image_results_url( $concept )` |
 | `mavo_search_image_concepts( $query, $lang )` | The one concept the query is *entirely* about ("bunte Häuser" → `colourful_houses`, not `house`; "plage lefkada" → none), for a photo row |
+| `mavo_search_suggestions( $lang, $limit )` | Queries worth suggesting: searched often lately (and this time last year), with plenty of exact results, minus "never suggest" and the current search |
+| `mavo_search_url( $query, $lang )` | The search URL in a language (`/en/?s=…`) |
+| `mavo_search_result_attributes( $post )` | `data-mavo-search-*` attributes for a result tile, so its clicks are counted |
 | `mavo_search_result( $post )` / `mavo_search_current()` | The current search's result for a post / as a whole |
 | `mavo_search_result_image( $post, $args )` | Attachment ID: best photo for the query's concepts, else the featured image |
 | `mavo_search_get_excerpt( $post_id, $query, $args )` | Contextual highlighted excerpt (escaped HTML) |
@@ -103,6 +112,10 @@ Filters: `mavo_search_search_ok`, `mavo_search_query`, `mavo_search_parsed_query
 `mavo_search_highlight_query`, `mavo_search_highlight_html`, `mavo_search_image_concepts`, `mavo_search_synonyms`,
 `mavo_search_stopwords`, `mavo_search_log_enabled`.
 
+Also: `mavo_search_best_bets`, `mavo_search_suggestions`.
+
+REST: `POST /wp-json/mavo-search/v1/click` (q, lang, post, rank, source) — the click counter.
+
 Actions: `mavo_search_document_indexed( $post_id, $lang, $doc_id )`,
 `mavo_search_index_rebuilt( $mode )`, `mavo_search_query_logged( $query, $lang, $results )`.
 
@@ -114,6 +127,12 @@ Coming from Relevanssi: `docs/relevanssi-compat.md`.
   (`mavo_search_result_image()`), else its featured image.
 - Partial matches are said plainly under the search box, naming the word
   left out (`missing_words`).
+- "Try for example" lists searches visitors really make
+  (`mavo_search_suggestions()`), falling back to the hand-written line;
+  below it, the visitor's own recent searches, filled in the browser from
+  mavo-for-you's profile.
+- Result tiles carry `mavo_search_result_attributes()`, and
+  `assets/clicks.js` counts clicks on them and on the photo row.
 - A query that is exactly an image concept gets one row of photos from
   mavo-image-index (`mavo_image_concept_row()`) between the header and the
   articles, ruled off from them; first page only.

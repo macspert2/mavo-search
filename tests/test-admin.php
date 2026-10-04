@@ -20,6 +20,7 @@ function selected( $a, $b ) { echo $a === $b ? ' selected' : ''; }
 function checked( $a ) { echo $a ? ' checked' : ''; }
 function number_format_i18n( $n, $d = 0 ) { return number_format( (float) $n, $d ); }
 function size_format( $b ) { return $b . ' B'; }
+function esc_textarea( $s ) { return esc_html( $s ); }
 function wp_date( $f, $t ) { return gmdate( $f, $t ); }
 function get_permalink( $id ) { return "https://example.test/?p=$id"; }
 function get_edit_post_link( $id ) { return "https://example.test/wp-admin/post.php?post=$id"; }
@@ -30,7 +31,6 @@ function sanitize_text_field( $s ) { return trim( strip_tags( (string) $s ) ); }
 function wp_unslash( $v ) { return $v; }
 function wp_die( $m ) { throw new RuntimeException( 'die: ' . $m ); }
 function wp_safe_redirect( $u ) { throw new RuntimeException( 'redirect: ' . $u ); }
-function add_query_arg( $args, $url ) { return $url . '?' . http_build_query( $args ); }
 
 require MVS_PLUGIN_DIR . 'includes/class-mavo-search-admin.php';
 

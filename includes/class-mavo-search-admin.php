@@ -19,6 +19,8 @@ class MVS_Admin {
 		add_action( 'wp_ajax_' . self::AJAX, [ __CLASS__, 'ajax_rebuild' ] );
 		add_action( 'admin_post_mvs_reindex_post', [ __CLASS__, 'handle_reindex_post' ] );
 		add_action( 'admin_post_mvs_save_settings', [ __CLASS__, 'handle_save_settings' ] );
+		add_action( 'admin_post_mvs_save_best_bets', [ __CLASS__, 'handle_save_best_bets' ] );
+		add_action( 'admin_post_mvs_save_suggest', [ __CLASS__, 'handle_save_suggest' ] );
 	}
 
 	public static function add_page(): void {
@@ -90,6 +92,23 @@ class MVS_Admin {
 		self::back( [ 'mvs_notice' => 'settings' ] );
 	}
 
+	public static function handle_save_best_bets(): void {
+		self::guard( 'mvs_save_best_bets' );
+
+		$bets = MVS_Best_Bets::parse( (string) wp_unslash( $_POST['best_bets'] ?? '' ) );
+		MVS_Best_Bets::save( $bets );
+
+		self::back( [ 'mvs_notice' => 'best_bets', 'mvs_count' => count( $bets ) ], 'mvs-best-bets' );
+	}
+
+	public static function handle_save_suggest(): void {
+		self::guard( 'mvs_save_suggest' );
+
+		MVS_Suggest::save_blocked( (string) wp_unslash( $_POST['blocked'] ?? '' ) );
+
+		self::back( [ 'mvs_notice' => 'settings' ], 'mvs-suggest' );
+	}
+
 	/* ---------------------------------------------------------------- page */
 
 	public static function render_page(): void {
@@ -125,9 +144,12 @@ class MVS_Admin {
 			</form>
 
 			<?php self::render_test(); ?>
+			<?php self::render_best_bets(); ?>
+			<?php self::render_log(); ?>
+			<?php self::render_clicks(); ?>
+			<?php self::render_suggest(); ?>
 			<?php self::render_integrations(); ?>
 			<?php self::render_weights(); ?>
-			<?php self::render_log(); ?>
 		</div>
 		<?php
 	}
@@ -354,6 +376,131 @@ class MVS_Admin {
 		<?php
 	}
 
+	private static function render_best_bets(): void {
+		$bets  = MVS_Best_Bets::all();
+		$posts = array_merge( [], ...array_map( static fn( $b ) => $b['posts'], $bets ) );
+		$docs  = [];
+
+		if ( $posts ) {
+			global $wpdb;
+			$docs = array_column( (array) $wpdb->get_results( 'SELECT post_id, lang FROM ' . MVS_DB::docs() . " WHERE status = 'indexed' AND post_id IN (" . MVS_DB::in_ints( $posts ) . ')', ARRAY_A ), 'lang', 'post_id' );
+		}
+		?>
+		<h2 id="mvs-best-bets"><?php esc_html_e( 'Best bets', 'mavo-search' ); ?></h2>
+		<p class="description"><?php esc_html_e( 'Posts shown first for a query, before everything ranked. One per line: “query = post ID, post ID”. A query matches regardless of case, accents and punctuation, but word for word: a line for “londres” does not apply to “londres famille”. Each post only counts in its own language, so one line can list a post per language. The no-result and partial-match reports below are the list to work from.', 'mavo-search' ); ?></p>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<input type="hidden" name="action" value="mvs_save_best_bets">
+			<?php wp_nonce_field( 'mvs_save_best_bets' ); ?>
+			<textarea name="best_bets" rows="6" class="large-text code" placeholder="londres = 1234, 5678&#10;harry potter = 4321"><?php echo esc_textarea( MVS_Best_Bets::to_text( $bets ) ); ?></textarea>
+			<?php submit_button( __( 'Save best bets', 'mavo-search' ), 'secondary' ); ?>
+		</form>
+
+		<?php if ( $bets ) : ?>
+			<table class="widefat striped mvs__table">
+				<tbody>
+					<?php foreach ( $bets as $bet ) : ?>
+						<tr>
+							<th><?php echo esc_html( $bet['query'] ); ?></th>
+							<td>
+								<?php foreach ( $bet['posts'] as $post_id ) : ?>
+									<div>
+										<a href="<?php echo esc_url( (string) get_permalink( $post_id ) ); ?>" target="_blank" rel="noopener"><?php echo esc_html( get_the_title( $post_id ) ?: '#' . $post_id ); ?></a>
+										<?php if ( isset( $docs[ $post_id ] ) ) : ?>
+											<span class="description"><?php echo esc_html( strtoupper( $docs[ $post_id ] ) ); ?></span>
+										<?php else : ?>
+											<span class="mvs__warn"><?php esc_html_e( 'not in the index (unpublished, noindex or wrong type) — not shown', 'mavo-search' ); ?></span>
+										<?php endif; ?>
+									</div>
+								<?php endforeach; ?>
+							</td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
+		<?php endif; ?>
+		<?php
+	}
+
+	private static function render_clicks(): void {
+		$sources   = MVS_Clicks::by_source( 30 );
+		$clicked   = MVS_Clicks::report( 30, null, 20 );
+		$unclicked = MVS_Clicks::unclicked( 30, null, 20 );
+		?>
+		<h2 id="mvs-clicks"><?php esc_html_e( 'What visitors click (last 30 days)', 'mavo-search' ); ?></h2>
+		<p class="description">
+			<?php esc_html_e( 'Counted with the search log’s switch, never for editors, nothing about the visitor. Not used for ranking yet: collected so that ranking changes can be judged later.', 'mavo-search' ); ?>
+			<?php
+			$parts = [];
+			foreach ( [ 'result' => __( 'results', 'mavo-search' ), 'pinned' => __( 'best bets', 'mavo-search' ), 'photos' => __( 'photo rows', 'mavo-search' ) ] as $source => $label ) {
+				$parts[] = $label . ' ' . number_format_i18n( $sources[ $source ] ?? 0 );
+			}
+			echo esc_html( __( 'Clicks:', 'mavo-search' ) . ' ' . implode( ' · ', $parts ) );
+			?>
+		</p>
+		<div class="mvs__columns mvs__columns--wide">
+			<table class="widefat striped mvs__table">
+				<thead><tr>
+					<th><?php esc_html_e( 'Query', 'mavo-search' ); ?></th>
+					<th><?php esc_html_e( 'Searches', 'mavo-search' ); ?></th>
+					<th><?php esc_html_e( 'Clicks', 'mavo-search' ); ?></th>
+					<th><?php esc_html_e( 'Avg. rank', 'mavo-search' ); ?></th>
+					<th><?php esc_html_e( 'Most clicked', 'mavo-search' ); ?></th>
+				</tr></thead>
+				<tbody>
+					<?php if ( ! $clicked ) : ?>
+						<tr><td colspan="5"><?php esc_html_e( 'None yet.', 'mavo-search' ); ?></td></tr>
+					<?php endif; ?>
+					<?php foreach ( $clicked as $row ) : ?>
+						<tr class="<?php echo $row['avg_rank'] > 3 ? 'mvs__warn' : ''; ?>">
+							<td><?php echo esc_html( $row['query'] ); ?> <span class="description"><?php echo esc_html( strtoupper( $row['lang'] ) ); ?></span></td>
+							<td><?php echo esc_html( number_format_i18n( $row['searches'] ) ); ?></td>
+							<td><?php echo esc_html( number_format_i18n( $row['clicks'] ) ); ?></td>
+							<td><?php echo esc_html( number_format_i18n( $row['avg_rank'], 1 ) ); ?></td>
+							<td><?php echo esc_html( get_the_title( $row['top_post'] ) ); ?> <span class="description">#<?php echo (int) $row['top_post']; ?>, <?php echo (int) $row['top_clicks']; ?>×</span></td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
+			<table class="widefat striped mvs__table">
+				<thead><tr><th colspan="2"><?php esc_html_e( 'Searched, never clicked', 'mavo-search' ); ?></th></tr></thead>
+				<tbody>
+					<?php if ( ! $unclicked ) : ?>
+						<tr><td colspan="2"><?php esc_html_e( 'None.', 'mavo-search' ); ?></td></tr>
+					<?php endif; ?>
+					<?php foreach ( $unclicked as $row ) : ?>
+						<tr>
+							<td><?php echo esc_html( $row['query'] ); ?> <span class="description"><?php echo esc_html( strtoupper( $row['lang'] ) ); ?></span></td>
+							<td><?php echo esc_html( number_format_i18n( $row['searches'] ) ); ?>×</td>
+						</tr>
+					<?php endforeach; ?>
+				</tbody>
+			</table>
+		</div>
+		<p class="description"><?php esc_html_e( 'Rows in red: visitors click on average below the third result — a ranking to look at, or a best bet to add.', 'mavo-search' ); ?></p>
+		<?php
+	}
+
+	private static function render_suggest(): void {
+		?>
+		<h2 id="mvs-suggest"><?php esc_html_e( 'Suggestions under the search box', 'mavo-search' ); ?></h2>
+		<p class="description"><?php esc_html_e( 'Taken from the log: queries searched at least 3 times in 60 days with at least 5 exact results, the same weeks last year first. With fewer than three, the theme shows its hand-written examples. Words or phrases listed here are never suggested, one per line.', 'mavo-search' ); ?></p>
+		<ul class="mvs__urls">
+			<?php foreach ( MVS_Lang::languages() as $lang ) : ?>
+				<?php $list = MVS_Suggest::for_lang( $lang, 6 ); ?>
+				<li><strong><?php echo esc_html( strtoupper( $lang ) ); ?></strong>
+					<?php echo $list ? esc_html( implode( ' · ', $list ) ) : '<span class="description">' . esc_html__( 'none yet — the hand-written examples show', 'mavo-search' ) . '</span>'; ?>
+				</li>
+			<?php endforeach; ?>
+		</ul>
+		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+			<input type="hidden" name="action" value="mvs_save_suggest">
+			<?php wp_nonce_field( 'mvs_save_suggest' ); ?>
+			<textarea name="blocked" rows="4" class="large-text code" placeholder="<?php esc_attr_e( 'one word or phrase per line', 'mavo-search' ); ?>"><?php echo esc_textarea( implode( "\n", MVS_Suggest::blocked() ) ); ?></textarea>
+			<?php submit_button( __( 'Save “never suggest”', 'mavo-search' ), 'secondary' ); ?>
+		</form>
+		<?php
+	}
+
 	private static function render_integrations(): void {
 		$rows = [
 			[ 'Polylang', function_exists( 'pll_current_language' ), __( 'one index per language; searches stay in the visitor’s language', 'mavo-search' ), __( 'everything is filed under the default language', 'mavo-search' ) ],
@@ -475,6 +622,8 @@ class MVS_Admin {
 					sanitize_key( $_GET['mvs_result'] ?? '' )
 				) )
 			);
+		} elseif ( 'best_bets' === $notice ) {
+			printf( '<div class="notice notice-success is-dismissible"><p>%s</p></div>', esc_html( sprintf( __( '%d best bets saved.', 'mavo-search' ), absint( $_GET['mvs_count'] ?? 0 ) ) ) );
 		} elseif ( 'settings' === $notice ) {
 			printf( '<div class="notice notice-success is-dismissible"><p>%s</p></div>', esc_html__( 'Saved.', 'mavo-search' ) );
 		}
@@ -488,8 +637,8 @@ class MVS_Admin {
 		check_admin_referer( $action );
 	}
 
-	private static function back( array $args ): void {
-		wp_safe_redirect( add_query_arg( $args + [ 'page' => self::PAGE_SLUG ], admin_url( 'tools.php' ) ) );
+	private static function back( array $args, string $anchor = '' ): void {
+		wp_safe_redirect( add_query_arg( $args + [ 'page' => self::PAGE_SLUG ], admin_url( 'tools.php' ) ) . ( '' !== $anchor ? '#' . $anchor : '' ) );
 		exit;
 	}
 }

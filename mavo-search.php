@@ -28,6 +28,7 @@ require_once MVS_PLUGIN_DIR . 'includes/class-mavo-search-images.php';
 require_once MVS_PLUGIN_DIR . 'includes/class-mavo-search-document.php';
 require_once MVS_PLUGIN_DIR . 'includes/class-mavo-search-indexer.php';
 require_once MVS_PLUGIN_DIR . 'includes/class-mavo-search-query.php';
+require_once MVS_PLUGIN_DIR . 'includes/class-mavo-search-best-bets.php';
 require_once MVS_PLUGIN_DIR . 'includes/class-mavo-search-engine.php';
 require_once MVS_PLUGIN_DIR . 'includes/class-mavo-search-highlight.php';
 require_once MVS_PLUGIN_DIR . 'includes/class-mavo-search-excerpt.php';
@@ -35,6 +36,8 @@ require_once MVS_PLUGIN_DIR . 'includes/class-mavo-search-status.php';
 require_once MVS_PLUGIN_DIR . 'includes/class-mavo-search-rebuild.php';
 require_once MVS_PLUGIN_DIR . 'includes/class-mavo-search-sync.php';
 require_once MVS_PLUGIN_DIR . 'includes/class-mavo-search-log.php';
+require_once MVS_PLUGIN_DIR . 'includes/class-mavo-search-clicks.php';
+require_once MVS_PLUGIN_DIR . 'includes/class-mavo-search-suggest.php';
 require_once MVS_PLUGIN_DIR . 'includes/class-mavo-search-wp.php';
 require_once MVS_PLUGIN_DIR . 'includes/api.php';
 
@@ -61,6 +64,7 @@ add_action( 'plugins_loaded', static function () {
 	MVS_Sync::init();
 	MVS_Rebuild::init();
 	MVS_Log::init();
+	MVS_Clicks::init();
 	MVS_WP::init();
 
 	if ( is_admin() ) {

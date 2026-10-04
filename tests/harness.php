@@ -67,6 +67,8 @@ class Test_WPDB {
 			CREATE INDEX wp_mavo_search_terms_term ON wp_mavo_search_terms ( term, lang );
 			CREATE TABLE wp_mavo_search_log ( id INTEGER PRIMARY KEY AUTOINCREMENT, query TEXT, lang TEXT, day TEXT,
 				searches INTEGER DEFAULT 0, results INTEGER DEFAULT 0, fallback TEXT DEFAULT '', UNIQUE ( query, lang, day ) );
+			CREATE TABLE wp_mavo_search_clicks ( id INTEGER PRIMARY KEY AUTOINCREMENT, query TEXT, lang TEXT, day TEXT, post_id INTEGER,
+				source TEXT DEFAULT 'result', clicks INTEGER DEFAULT 0, rank_total INTEGER DEFAULT 0, UNIQUE ( query, lang, day, post_id, source ) );
 		" );
 	}
 
@@ -265,6 +267,16 @@ function get_search_query( $escaped = true ) { return $GLOBALS['MOCK_SEARCH'] ??
 function wp_enqueue_style( ...$a ) { $GLOBALS['MOCK_STYLES'][] = $a[0]; }
 function get_the_title( $post = 0 ) { $p = get_post( $post ); return $p ? $p->post_title : ''; }
 function get_post_thumbnail_id( $post = null ) { $p = get_post( $post ); return $p ? (int) get_post_meta( $p->ID, '_thumbnail_id', true ) : 0; }
+function add_query_arg( $args, $url = '' ) {
+	if ( is_string( $args ) ) { $args = [ $args => $url ]; $url = func_get_arg( 2 ); }
+	return $url . ( str_contains( $url, '?' ) ? '&' : '?' ) . implode( '&', array_map( static fn( $k, $v ) => "$k=$v", array_keys( $args ), $args ) );
+}
+function home_url( $p = '' ) { return 'https://example.test' . $p; }
+function rest_url( $p = '' ) { return 'https://example.test/wp-json/' . $p; }
+function wp_enqueue_script( ...$a ) { $GLOBALS['MOCK_SCRIPTS'][] = $a[0]; }
+function wp_localize_script( $h, $name, $data ) { $GLOBALS['MOCK_LOCALIZED'][ $name ] = $data; }
+function register_rest_route( $ns, $route, $args ) { $GLOBALS['MOCK_ROUTES'][ "$ns$route" ] = $args; }
+class WP_REST_Response { public $data; public $status; public function __construct( $data = null, $status = 200 ) { $this->data = $data; $this->status = $status; } }
 function get_post_type( $id ) { $p = get_post( $id ); return $p ? $p->post_type : false; }
 
 function update_meta_cache( $type, $ids ) {
@@ -363,6 +375,7 @@ require MVS_PLUGIN_DIR . 'includes/class-mavo-search-images.php';
 require MVS_PLUGIN_DIR . 'includes/class-mavo-search-document.php';
 require MVS_PLUGIN_DIR . 'includes/class-mavo-search-indexer.php';
 require MVS_PLUGIN_DIR . 'includes/class-mavo-search-query.php';
+require MVS_PLUGIN_DIR . 'includes/class-mavo-search-best-bets.php';
 require MVS_PLUGIN_DIR . 'includes/class-mavo-search-engine.php';
 require MVS_PLUGIN_DIR . 'includes/class-mavo-search-highlight.php';
 require MVS_PLUGIN_DIR . 'includes/class-mavo-search-excerpt.php';
@@ -370,6 +383,8 @@ require MVS_PLUGIN_DIR . 'includes/class-mavo-search-status.php';
 require MVS_PLUGIN_DIR . 'includes/class-mavo-search-rebuild.php';
 require MVS_PLUGIN_DIR . 'includes/class-mavo-search-sync.php';
 require MVS_PLUGIN_DIR . 'includes/class-mavo-search-log.php';
+require MVS_PLUGIN_DIR . 'includes/class-mavo-search-clicks.php';
+require MVS_PLUGIN_DIR . 'includes/class-mavo-search-suggest.php';
 require MVS_PLUGIN_DIR . 'includes/class-mavo-search-wp.php';
 require MVS_PLUGIN_DIR . 'includes/api.php';
 

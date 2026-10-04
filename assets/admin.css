@@ -16,3 +16,5 @@
 .mvs__weights { max-width: 360px; }
 .mvs__columns { display: flex; flex-wrap: wrap; gap: 16px; }
 .mvs__columns .mvs__table { flex: 1 1 280px; max-width: 360px; }
+.mvs__columns--wide .mvs__table:first-child { flex: 2 1 560px; max-width: 760px; }
+.mvs__table tr.mvs__warn td:first-child { color: #b32d2e; }
