@@ -146,15 +146,18 @@ class MVS_Query {
 	}
 
 	/**
-	 * The image concepts a query is entirely about — "eaux turquoise",
-	 * "plage", "jardins" — and only then: every word of the query must have
-	 * named a concept. "plage lefkada" is a search for Lefkada, not for
-	 * photos of beaches, and gets nothing here.
+	 * The one image concept a query is entirely about — "eaux turquoise",
+	 * "bunte Häuser", "plage" — and only then: that concept alone must
+	 * account for every word of the query. "plage lefkada" is a search for
+	 * Lefkada, not for photos of beaches, and gets nothing here.
 	 *
-	 * The fewest, strongest concepts that cover every word, at most two, so a
-	 * concept the matcher only implied (beach → sea) does not ride along.
+	 * Several concepts can fit: "bunte Häuser" names colourful houses, and
+	 * its "Häuser" alone names houses. The most specific wins — the one
+	 * accounting for the most words — then the strongest match (so a concept
+	 * the matcher only implied, beach → sea, loses), then the first named.
+	 * Two concepts side by side ("plage jardin") are no exact fit.
 	 *
-	 * @return string[] Concept slugs; [] when the query is not purely visual.
+	 * @return string[] One concept slug, or [] when the query is not purely visual.
 	 */
 	public static function exact_concepts( array $parsed ): array {
 		if ( ! $parsed['groups'] || ! $parsed['concepts'] || $parsed['phrases'] ) {
@@ -170,24 +173,16 @@ class MVS_Query {
 			}
 		}
 
-		$concepts = $parsed['concepts'];
-		arsort( $concepts );
+		$order  = array_flip( array_map( 'strval', array_keys( $parsed['concepts'] ) ) );
+		$ranked = array_keys( $covers );
 
-		$chosen  = [];
-		$covered = [];
+		usort( $ranked, static fn( $a, $b ) => [ count( $covers[ $b ] ), $parsed['concepts'][ $b ] ?? 0, $order[ $a ] ?? 0 ]
+			<=> [ count( $covers[ $a ] ), $parsed['concepts'][ $a ] ?? 0, $order[ $b ] ?? 0 ] );
 
-		foreach ( array_keys( $concepts ) as $slug ) {
-			$new = array_diff( $covers[ $slug ] ?? [], $covered );
+		$best  = $ranked[0] ?? null;
+		$exact = null !== $best && count( $covers[ $best ] ) === count( $parsed['groups'] ) ? [ (string) $best ] : [];
 
-			if ( $new ) {
-				$chosen[] = (string) $slug;
-				$covered  = array_merge( $covered, $new );
-			}
-		}
-
-		$exact = ! array_diff( array_keys( $parsed['groups'] ), $covered ) && count( $chosen ) <= 2 ? $chosen : [];
-
-		/** The image concepts a query is entirely about, for a photo row beside the results. */
+		/** The image concept a query is entirely about, for a photo row beside the results. */
 		return array_values( (array) apply_filters( 'mavo_search_image_concepts', $exact, $parsed ) );
 	}
 

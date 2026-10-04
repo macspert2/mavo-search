@@ -96,7 +96,14 @@ same( 'parse exposes the concept for the /images/ bridge', [ 'turquoise_water' ]
 same( 'exact fit: the query is the concept', [ 'turquoise_water' ], mavo_search_image_concepts( 'Eaux turquoise' ) );
 same( 'exact fit: one word', [ 'beach' ], mavo_search_image_concepts( 'plage' ) );
 same( 'exact fit: plural, stopwords ignored', [ 'beach' ], mavo_search_image_concepts( 'les plages' ) );
-same( 'exact fit: two concepts', [ 'beach', 'garden' ], mavo_search_image_concepts( 'plage jardin' ) );
+same( 'two concepts side by side: no exact fit', [], mavo_search_image_concepts( 'plage jardin' ) );
+same( 'the concept naming more words wins over one inside it', [ 'colourful_houses' ], mavo_search_image_concepts( 'maisons colorées' ) );
+same( '... whatever the order the matcher reports them in', [ 'colourful_houses' ], ( static function () {
+	$GLOBALS['MOCK_MATCHER']['fr'] = [ 'maisons' => 'house' ] + $GLOBALS['MOCK_MATCHER']['fr'];
+	MVS_Query::reset();
+	return mavo_search_image_concepts( 'maisons colorées' );
+} )() );
+same( 'one word, one concept', [ 'house' ], mavo_search_image_concepts( 'maisons' ) );
 same( 'not exact: a place besides the concept', [], mavo_search_image_concepts( 'plage lefkada' ) );
 same( 'not exact: no concept', [], mavo_search_image_concepts( 'londres' ) );
 same( 'not exact: a quoted phrase is literal', [], mavo_search_image_concepts( '"eaux turquoise"' ) );

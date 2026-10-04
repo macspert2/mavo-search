@@ -81,13 +81,15 @@ function mavo_search_current(): ?array {
 }
 
 /**
- * The image concepts a query is entirely about ("eaux turquoise" →
+ * The image concept a query is entirely about ("eaux turquoise" →
  * [ 'turquoise_water' ]), or [] — e.g. to offer a row of matching photos
- * beside the results, apart from them. Only an exact fit: every word of the
- * query names the concept, so "plage lefkada" gives [].
+ * beside the results, apart from them. Only an exact fit: that one concept
+ * names every word of the query, so "plage lefkada" and "plage jardin" give
+ * []. When several fit, the most specific wins: "bunte Häuser" is colourful
+ * houses, not houses.
  *
  * @param string|null $query Default the current search.
- * @return string[] mavo-image-index concept slugs, at most two.
+ * @return string[] One mavo-image-index concept slug, or none.
  */
 function mavo_search_image_concepts( ?string $query = null, ?string $lang = null ): array {
 	$query = $query ?? ( function_exists( 'get_search_query' ) ? (string) get_search_query( false ) : '' );

@@ -187,11 +187,13 @@ and honest partial results. Presentation stays in the theme
   visitor typed them). The theme says "no article mentions « Zanzibar »",
   or, when every word exists but never together, says that.
 - **Photo row, exact fit only** (user's condition: most visitors do not
-  want to browse images): `mavo_search_image_concepts()` returns concepts
-  only when *every* word of the query named one — the fewest, strongest
-  concepts covering all words, at most two; never for quoted phrases. So
-  "eaux turquoise", "plage", "les plages" get a row; "plage lefkada" does
-  not. The row is mavo-image-index's own browse row
+  want to browse images): `mavo_search_image_concepts()` returns one
+  concept, and only when that concept alone names *every* word of the
+  query; never for quoted phrases. When several fit, the one naming the most
+  words wins, then the strongest match: "bunte Häuser" is colourful_houses,
+  not house (user's report, 2026-10-04 — it had shown both rows). So "eaux
+  turquoise", "plage", "les plages" get a row; "plage lefkada" and "plage
+  jardin" do not. The row is mavo-image-index's own browse row
   (`mavo_image_concept_row()`, added for this), shown in its own ruled band
   above the articles — the "group, don't mix" idea, as the user asked.
 - **Thumbnails**: unchanged API; the theme now calls it.
@@ -220,7 +222,7 @@ lookups are index ranges on `(term, lang)`.
 ## Tests
 
 `tests/run.sh` runs each `test-*.php` in its own process against an in-memory
-SQLite `$wpdb` (`tests/harness.php`): 220 assertions over text, ranking (the
+SQLite `$wpdb` (`tests/harness.php`): 223 assertions over text, ranking (the
 representative queries of agent.md), excerpts and highlighting, the
 `posts_pre_query` integration and logging, incremental sync and status, the
 admin page, WP-CLI, and a site with none of the integrations.

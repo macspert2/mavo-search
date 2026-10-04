@@ -13,7 +13,8 @@ $GLOBALS['MOCK_IMAGES']     = [];   // post_id => [ [ id, alt => [ lang => text 
 $GLOBALS['MOCK_CONCEPT_LABELS'] = [ 'fr' => [ 'beach' => 'Plage', 'turquoise_water' => 'Eaux turquoise', 'forest' => 'Forêt', 'garden' => 'Jardin' ],
                                     'en' => [ 'beach' => 'Beach', 'turquoise_water' => 'Turquoise water', 'forest' => 'Forest', 'garden' => 'Garden' ],
                                     'de' => [ 'beach' => 'Strand', 'turquoise_water' => 'Türkises Wasser', 'forest' => 'Wald', 'garden' => 'Garten' ] ];
-$GLOBALS['MOCK_MATCHER']    = [ 'fr' => [ 'eaux turquoise' => 'turquoise_water', 'eau turquoise' => 'turquoise_water', 'plage' => 'beach', 'plages' => 'beach', 'jardin' => 'garden', 'jardins' => 'garden' ] ];
+$GLOBALS['MOCK_MATCHER']    = [ 'fr' => [ 'eaux turquoise' => 'turquoise_water', 'eau turquoise' => 'turquoise_water', 'plage' => 'beach', 'plages' => 'beach', 'jardin' => 'garden', 'jardins' => 'garden',
+	'maisons colorées' => 'colourful_houses', 'maisons' => 'house' ] ];
 
 function pll_languages_list( $args = [] ) { return [ 'fr', 'en', 'de' ]; }
 function pll_default_language( $field = 'slug' ) { return 'fr'; }

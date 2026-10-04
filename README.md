@@ -86,7 +86,7 @@ mavo_search_the_title();                  // title with the query's words marked
 |---|---|
 | `mavo_search( $query, $args )` | Ranked results with excerpts; `$args`: lang, page, per_page, post_types, excerpts, fallback, explain |
 | `mavo_search_parse_query( $query, $lang )` | Word groups and variants, quoted phrases, image `concepts` — e.g. to link `mavo_image_results_url( $concept )` |
-| `mavo_search_image_concepts( $query, $lang )` | Concepts the query is *entirely* about ("eaux turquoise" → `turquoise_water`; "plage lefkada" → none), for a photo row |
+| `mavo_search_image_concepts( $query, $lang )` | The one concept the query is *entirely* about ("bunte Häuser" → `colourful_houses`, not `house`; "plage lefkada" → none), for a photo row |
 | `mavo_search_result( $post )` / `mavo_search_current()` | The current search's result for a post / as a whole |
 | `mavo_search_result_image( $post, $args )` | Attachment ID: best photo for the query's concepts, else the featured image |
 | `mavo_search_get_excerpt( $post_id, $query, $args )` | Contextual highlighted excerpt (escaped HTML) |
