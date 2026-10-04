@@ -5,8 +5,8 @@
  *
  *   result tiles  any link inside an element with data-mavo-search-rank
  *                 (mavo_search_result_attributes())
- *   photo rows    any link inside a [data-post-id] tile of a .mavo-search-photos
- *                 container, ranked by position in the row
+ *   photo rows,   any link inside a [data-post-id] tile of a .mavo-search-photos
+ *   guide bands   or .mavo-search-guides container, ranked by position in it
  *
  * Middle clicks (a new tab) count too.
  */
@@ -58,12 +58,12 @@
 			return;
 		}
 
-		var row  = link.closest( '.mavo-search-photos' );
+		var row  = link.closest( '.mavo-search-photos, .mavo-search-guides' );
 		var tile = link.closest( '[data-post-id]' );
 
 		if ( row && tile ) {
 			var tiles = Array.prototype.slice.call( row.querySelectorAll( '[data-post-id]' ) );
-			send( tile.getAttribute( 'data-post-id' ), tiles.indexOf( tile ) + 1, 'photos' );
+			send( tile.getAttribute( 'data-post-id' ), tiles.indexOf( tile ) + 1, row.classList.contains( 'mavo-search-guides' ) ? 'guides' : 'photos' );
 		}
 	}
 

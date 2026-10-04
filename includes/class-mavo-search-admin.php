@@ -301,7 +301,7 @@ class MVS_Admin {
 		<?php endif; ?>
 
 		<?php
-		$result = mavo_search( $query, [ 'lang' => $lang, 'per_page' => 20, 'explain' => true ] );
+		$result = mavo_search( $query, [ 'lang' => $lang, 'per_page' => 20, 'explain' => true, 'guides' => max( 0, (int) apply_filters( 'mavo_search_guides', 3 ) ) ] );
 		$parsed = $result['parsed'];
 		?>
 		<p class="description">
@@ -329,6 +329,12 @@ class MVS_Admin {
 			}
 			?>
 		</p>
+
+		<?php if ( $result['guides'] ) : ?>
+			<p><strong><?php esc_html_e( 'Shown as guides, above the results:', 'mavo-search' ); ?></strong>
+				<?php echo esc_html( implode( ' · ', array_map( static fn( $g ) => get_the_title( $g['post_id'] ) . ' (#' . $g['post_id'] . ')', $result['guides'] ) ) ); ?>
+			</p>
+		<?php endif; ?>
 
 		<?php if ( ! $result['results'] ) : ?>
 			<p><?php esc_html_e( 'No results.', 'mavo-search' ); ?></p>
@@ -434,7 +440,7 @@ class MVS_Admin {
 			<?php esc_html_e( 'Counted with the search log’s switch, never for editors, nothing about the visitor. Not used for ranking yet: collected so that ranking changes can be judged later.', 'mavo-search' ); ?>
 			<?php
 			$parts = [];
-			foreach ( [ 'result' => __( 'results', 'mavo-search' ), 'pinned' => __( 'best bets', 'mavo-search' ), 'photos' => __( 'photo rows', 'mavo-search' ) ] as $source => $label ) {
+			foreach ( [ 'result' => __( 'results', 'mavo-search' ), 'pinned' => __( 'best bets', 'mavo-search' ), 'guides' => __( 'guides', 'mavo-search' ), 'photos' => __( 'photo rows', 'mavo-search' ) ] as $source => $label ) {
 				$parts[] = $label . ' ' . number_format_i18n( $sources[ $source ] ?? 0 );
 			}
 			echo esc_html( __( 'Clicks:', 'mavo-search' ) . ' ' . implode( ' · ', $parts ) );

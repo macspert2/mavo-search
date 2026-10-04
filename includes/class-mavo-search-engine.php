@@ -81,7 +81,8 @@ class MVS_Engine {
 	/**
 	 * Search, paged. What mavo_search() returns.
 	 *
-	 * @param array $args lang, page, per_page, post_types, explain, excerpts, fallback
+	 * @param array $args lang, page, per_page, post_types, explain, excerpts, fallback,
+	 *                    guides (int: take up to this many guides out of the results, default 0)
 	 */
 	public static function search( string $query, array $args = [] ): array {
 		$args = array_merge( [
@@ -92,6 +93,7 @@ class MVS_Engine {
 			'explain'    => false,
 			'excerpts'   => true,
 			'fallback'   => true,
+			'guides'     => 0,
 		], $args );
 
 		/** The raw query, before it is read. */
@@ -101,8 +103,9 @@ class MVS_Engine {
 		$page     = max( 1, (int) $args['page'] );
 		$per_page = max( 1, min( 100, (int) $args['per_page'] ) );
 		$ranking  = self::ranking( $parsed, $args );
-		$total    = count( $ranking['ranked'] );
-		$slice    = array_slice( $ranking['ranked'], ( $page - 1 ) * $per_page, $per_page );
+		[ $guides, $ranked ] = self::split_guides( $ranking, (int) $args['guides'] );
+		$total    = count( $ranked );
+		$slice    = array_slice( $ranked, ( $page - 1 ) * $per_page, $per_page );
 		$content  = self::texts( array_column( $slice, 'doc_id' ) );
 		$results  = [];
 
@@ -163,6 +166,9 @@ class MVS_Engine {
 			// result contains …" when the fallback answered.
 			'missing_words' => array_values( array_map( static fn( $g ) => (string) ( $parsed['groups'][ $g ]['raw'] ?? $parsed['groups'][ $g ]['token'] ?? '' ), $ranking['missing'] ?? [] ) ),
 			'results'  => $results,
+			// Guides taken out of the results, best first (on every page;
+			// a template shows them on the first).
+			'guides'   => array_map( static fn( $h ) => [ 'post_id' => (int) $h['post_id'], 'score' => $h['score'] ], $guides ),
 		];
 
 		if ( $args['explain'] ) {
@@ -170,6 +176,38 @@ class MVS_Engine {
 		}
 
 		return $out;
+	}
+
+	/**
+	 * The guides of a query, apart from the articles: hub pages and place
+	 * landing pages that are about the whole query (every word in their
+	 * title or guide places), at most $max, best first.
+	 *
+	 * Not for partial matches, never a best bet (an editor put it in the
+	 * list on purpose), and not when they would leave the list empty — a
+	 * search whose only results are guides shows them as results.
+	 *
+	 * @return array{0:array,1:array} [ guides, the ranked list without them ]
+	 */
+	private static function split_guides( array $ranking, int $max ): array {
+		$ranked = $ranking['ranked'];
+
+		if ( $max <= 0 || 'none' !== $ranking['fallback'] ) {
+			return [ [], $ranked ];
+		}
+
+		$guides = array_slice( array_values( array_filter( $ranked, static fn( $h ) =>
+			! empty( $h['about'] ) && empty( $h['pinned'] )
+			&& ( ! empty( $h['signals']['is_hub'] ) || in_array( 'guide', $h['fields'], true ) )
+		) ), 0, $max );
+
+		if ( ! $guides || count( $guides ) >= count( $ranked ) ) {
+			return [ [], $ranked ];
+		}
+
+		$ids = array_column( $guides, 'post_id' );
+
+		return [ $guides, array_values( array_filter( $ranked, static fn( $h ) => ! in_array( $h['post_id'], $ids, true ) ) ) ];
 	}
 
 	/**
@@ -368,7 +406,15 @@ class MVS_Engine {
 				}
 			}
 
+			// About the whole query: every word in its title or its guide
+			// places — what makes a hub or landing page a guide for it.
+			$about = count( $matching[ $doc ] ) === $n_groups;
+			foreach ( $matching[ $doc ] as $by_field ) {
+				$about = $about && ( isset( $by_field['title'] ) || isset( $by_field['guide'] ) );
+			}
+
 			$ranked[ $doc ] = [
+				'about'    => $about,
 				'post_id'  => (int) $meta[ $doc ]['post_id'],
 				'doc_id'   => $doc,
 				'score'    => round( $score, 2 ),

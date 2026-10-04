@@ -112,7 +112,7 @@ Filters: `mavo_search_search_ok`, `mavo_search_query`, `mavo_search_parsed_query
 `mavo_search_document_boost`, `mavo_search_places`, `mavo_search_hubs`,
 `mavo_search_guide_places`, `mavo_search_score`, `mavo_search_results`, `mavo_search_hits`,
 `mavo_search_excerpt`, `mavo_search_excerpt_length`, `mavo_search_replace_excerpt`,
-`mavo_search_highlight_query`, `mavo_search_highlight_html`, `mavo_search_image_concepts`, `mavo_search_reason`, `mavo_search_synonyms`,
+`mavo_search_highlight_query`, `mavo_search_highlight_html`, `mavo_search_image_concepts`, `mavo_search_reason`, `mavo_search_guides`, `mavo_search_synonyms`,
 `mavo_search_stopwords`, `mavo_search_log_enabled`.
 
 Also: `mavo_search_best_bets`, `mavo_search_suggestions`.
@@ -138,6 +138,10 @@ Coming from Relevanssi: `docs/relevanssi-compat.md`.
   muted line saying so — *Lieu : Lefkada (Grèce)*, *Thème : Harry Potter*,
   *Photo : « Le phare de Chania »*, *Mot-clé : …*, *Notre sélection* — from
   the result's `reason`; skipped when the tile's place badge already says it.
+- Broad queries get a **guides** band above the articles: hub pages and
+  place landing pages about the whole query ("Londres" → the London page),
+  up to three (`mavo_search_guides`), taken out of the article list
+  (`mavo_search_current()['guides']`).
 - No results: "Vouliez-vous dire …?" and links to the same search in the
   other languages that have results; partial results add "did you mean"
   when a word was found nowhere.

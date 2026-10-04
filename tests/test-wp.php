@@ -104,4 +104,22 @@ update_option( MVS_Log::ENABLED_OPTION, '0' );
 apply_filters( 'posts_pre_query', null, search_query( [ 's' => 'porto' ] ) );
 same( 'logging can be switched off', 2, (int) $wpdb->get_var( "SELECT searches FROM wp_mavo_search_log WHERE query = 'porto'" ) );
 
+/* ------------------------------------------------------------------ guides */
+
+mvs_post( 40, 'Porto', '<p>Notre guide de Porto.</p>', [ 'type' => 'page' ] );
+$GLOBALS['MOCK_HUBS'][40] = true;
+mavo_search_reindex_post( 40 );
+$GLOBALS['MOCK_LANG'] = 'fr';
+
+$q     = search_query();
+$posts = apply_filters( 'posts_pre_query', null, $q );
+same( 'the hub page about the query is a guide, apart', [ 40 ], array_column( mavo_search_current()['guides'], 'post_id' ) );
+check( '... not among the posts', ! in_array( 40, array_map( static fn( $p ) => $p->ID, $posts ), true ) );
+same( '... nor in found_posts', 25, $q->found_posts );
+
+add_filter( 'mavo_search_guides', static fn() => 0 );
+$q = search_query();
+apply_filters( 'posts_pre_query', null, $q );
+same( 'filter to 0: the guide is an ordinary result', [ [], 26 ], [ mavo_search_current()['guides'], $q->found_posts ] );
+
 done();

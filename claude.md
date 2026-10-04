@@ -272,6 +272,19 @@ failed, and never logs.
   WordPress already called a 404, so no endpoint served by any plugin can
   be cut off — the answer to "how can I be sure not to miss anything".
 
+## Guides apart from the articles (2026-10-04)
+
+Brainstorm item 11. A hit is a guide when it is a hub page or a place's
+landing page (`guide` field) **and** about the whole query: every word in its
+title or guide places (the ranking's `about` flag). Up to three
+(`mavo_search_guides`, default 3 in the site search, 0 in `mavo_search()`)
+are taken out of the ranked list in `MVS_Engine::search()` — after caching,
+so the ranking itself is unchanged — and returned as `guides`; totals and
+pages count the rest. Never for partial matches, never a best bet, and not
+when they would leave no articles. The theme draws them as ordinary post
+tiles in a ruled band above the photo row; clicks there count as source
+`guides`.
+
 ## Ranking, in one place
 
 ```
@@ -296,7 +309,7 @@ lookups are index ranges on `(term, lang)`.
 ## Tests
 
 `tests/run.sh` runs each `test-*.php` in its own process against an in-memory
-SQLite `$wpdb` (`tests/harness.php`): 325 assertions over text, ranking (the
+SQLite `$wpdb` (`tests/harness.php`): 342 assertions over text, ranking (the
 representative queries of agent.md), excerpts and highlighting, the
 `posts_pre_query` integration and logging, incremental sync and status, the
 admin page, WP-CLI, and a site with none of the integrations.

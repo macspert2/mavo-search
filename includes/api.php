@@ -76,7 +76,8 @@ function mavo_search_result( $post = null ): ?array {
 /**
  * The current search as a whole — total, pages, fallback ('or' = no exact
  * results, these are partial matches), missing_words (words no document has,
- * as typed) — or null.
+ * as typed), guides (hub and landing pages about the whole query, taken out
+ * of the results: [ post_id, score ] each) — or null.
  */
 function mavo_search_current(): ?array {
 	return MVS_WP::last();

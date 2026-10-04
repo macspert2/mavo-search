@@ -7,6 +7,7 @@
  *   source  result  a result tile in the list
  *           pinned  a result that was a best bet (decided here, not by the page)
  *           photos  a tile of the photo row of a purely visual query
+ *           guides  a tile of the guides band above the results
  *
  * assets/clicks.js reports a click with navigator.sendBeacon to
  * POST /wp-json/mavo-search/v1/click — it never delays the navigation. It is
@@ -26,7 +27,7 @@ defined( 'ABSPATH' ) || exit;
 class MVS_Clicks {
 
 	const REST_NS   = 'mavo-search/v1';
-	const SOURCES   = [ 'result', 'pinned', 'photos' ];
+	const SOURCES   = [ 'result', 'pinned', 'photos', 'guides' ];
 	const MAX_RANK  = 500;
 
 	public static function init(): void {

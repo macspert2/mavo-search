@@ -77,6 +77,8 @@ class MVS_WP {
 			'page'       => $page,
 			'per_page'   => $per_page,
 			'post_types' => '' === $type || 'any' === $type ? null : $type,
+			/** How many guides (hub and landing pages about the whole query) to show apart from the results; 0 keeps them in the list. */
+			'guides'     => max( 0, (int) apply_filters( 'mavo_search_guides', 3 ) ),
 		] );
 
 		self::$last = $result;

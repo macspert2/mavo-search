@@ -224,4 +224,31 @@ MVS_Best_Bets::save( MVS_Best_Bets::parse( 'zanzibar = 17' ) );
 same( 'a best bet nothing else explains', [ 'kind' => 'pinned' ], reason_of( 'zanzibar', 17 ) );
 MVS_Best_Bets::save( [] );
 
+/* ------------------------------------------------------------------ guides */
+
+function guides_of( string $query, array $args = [] ): array {
+	return array_column( mavo_search( $query, $args + [ 'guides' => 3, 'excerpts' => false ] )['guides'], 'post_id' );
+}
+
+same( 'landing pages about the query, best first', [ 1, 18 ], guides_of( 'londres' ) );
+$r = mavo_search( 'londres', [ 'guides' => 3, 'excerpts' => false, 'per_page' => 50 ] );
+check( 'guides are taken out of the results', ! array_intersect( [ 1, 18 ], array_column( $r['results'], 'post_id' ) ) );
+same( 'the total counts the articles only', count( ids( 'londres', [ 'per_page' => 50 ] ) ) - 2, $r['total'] );
+same( 'a hub page about the query', [ 50 ], guides_of( 'harry potter' ) );
+check( '... the article stays in the list', in_array( 4, array_column( mavo_search( 'harry potter', [ 'guides' => 3, 'excerpts' => false ] )['results'], 'post_id' ), true ) );
+same( 'not about every word: no guide', [], guides_of( 'où dormir à londres' ) );
+same( 'the hub lacks a word: no guide', [], guides_of( 'harry potter edimbourg' ) );
+same( 'partial matches: no guides', [], guides_of( 'londres zanzibar' ) );
+same( 'limit', [ 1 ], guides_of( 'londres', [ 'guides' => 1 ] ) );
+same( 'not asked: none, and nothing removed', [ [], count( ids( 'londres', [ 'per_page' => 50 ] ) ) ], [ guides_of( 'londres', [ 'guides' => 0 ] ), mavo_search( 'londres', [ 'per_page' => 50 ] )['total'] ] );
+
+MVS_Best_Bets::save( MVS_Best_Bets::parse( 'londres = 1' ) );
+same( 'a best bet stays in the list, first', [ [ 18 ], 1 ], [ guides_of( 'londres' ), mavo_search( 'londres', [ 'guides' => 3 ] )['results'][0]['post_id'] ] );
+MVS_Best_Bets::save( [] );
+
+mvs_post( 19, 'Escapade urbaine', '<p>Rien.</p>', [ 'type' => 'page' ] );
+$GLOBALS['MOCK_HUBS'][19] = true;
+mavo_search_reindex_post( 19 );
+same( 'only guides found: they stay results', [ [], [ 19 ] ], [ guides_of( 'escapade urbaine' ), ids( 'escapade urbaine', [ 'guides' => 3 ] ) ] );
+
 done();

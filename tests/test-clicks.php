@@ -31,6 +31,8 @@ same( 'refused: post of another language', false, MVS_Clicks::record( 'lisbonne'
 same( 'refused: unknown language', false, MVS_Clicks::record( 'lisbonne', 'xx', 1, 1 ) );
 same( 'refused: rank 0', false, MVS_Clicks::record( 'lisbonne', 'fr', 1, 0 ) );
 same( 'refused: absurd rank', false, MVS_Clicks::record( 'lisbonne', 'fr', 1, 9999 ) );
+check( 'a guides-band click', MVS_Clicks::record( 'porto', 'fr', 2, 1, 'guides' ) );
+$wpdb->query( "DELETE FROM wp_mavo_search_clicks WHERE source = 'guides'" );
 same( 'refused: unknown source', false, MVS_Clicks::record( 'lisbonne', 'fr', 1, 1, 'ads' ) );
 same( 'refused: empty query', false, MVS_Clicks::record( '  <b></b> ', 'fr', 1, 1 ) );
 
