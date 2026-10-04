@@ -17,6 +17,10 @@ mvs_rebuild();
 
 /* -------------------------------------------------------------- recording */
 
+same( 'refused: a query nobody searched', false, MVS_Clicks::record( 'Lisbonne', 'fr', 1, 1 ) );
+MVS_Log::record( 'Lisbonne', 'fr', 2 );
+MVS_Log::record( 'porto', 'fr', 1 );
+
 check( 'a result click', MVS_Clicks::record( 'Lisbonne', 'fr', 1, 1 ) );
 check( 'the same again', MVS_Clicks::record( 'lisbonne ', 'fr', 1, 3 ) );
 check( 'a photo-row click', MVS_Clicks::record( 'lisbonne', 'fr', 2, 2, 'photos' ) );
@@ -57,7 +61,7 @@ MVS_Log::record( 'sintra', 'fr', 3 );
 MVS_Log::record( 'evora', 'fr', 1 );
 
 $report = MVS_Clicks::report();
-same( 'report: most clicked query first, with its searches', [ 'lisbonne', 2, 4 ], [ $report[0]['query'], $report[0]['searches'], $report[0]['clicks'] ] );
+same( 'report: most clicked query first, with its searches', [ 'lisbonne', 3, 4 ], [ $report[0]['query'], $report[0]['searches'], $report[0]['clicks'] ] );
 same( 'report: average rank clicked', 1.8, $report[0]['avg_rank'] );
 same( 'report: most clicked post', [ 1, 2 ], [ $report[0]['top_post'], $report[0]['top_clicks'] ] );
 same( 'never clicked, searched twice or more', [ 'sintra' ], array_column( MVS_Clicks::unclicked(), 'query' ) );

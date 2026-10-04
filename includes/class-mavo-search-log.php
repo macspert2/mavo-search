@@ -21,6 +21,12 @@ class MVS_Log {
 	const PRUNE_HOOK     = 'mavo_search_prune_log';
 	const KEEP_DAYS      = 400;
 
+	/**
+	 * New queries counted per day, at most: a bot sending thousands of
+	 * random searches cannot bloat the table. Far above what visitors type.
+	 */
+	const MAX_NEW_PER_DAY = 2000;
+
 	public static function init(): void {
 		add_action( self::PRUNE_HOOK, [ __CLASS__, 'prune' ] );
 	}
@@ -88,6 +94,12 @@ class MVS_Log {
 		$fallback = 'none' === $fallback ? '' : $fallback;
 
 		if ( ! $id ) {
+			$cap = (int) apply_filters( 'mavo_search_log_daily_cap', self::MAX_NEW_PER_DAY );
+
+			if ( $cap > 0 && (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . MVS_DB::log() . ' WHERE day = %s', $day ) ) >= $cap ) {
+				return;
+			}
+
 			$inserted = $wpdb->insert( MVS_DB::log(), [
 				'query'    => $query,
 				'lang'     => $lang,

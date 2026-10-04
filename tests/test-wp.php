@@ -173,4 +173,23 @@ check( 'clicks still counted on page 2', isset( $GLOBALS['MOCK_LOCALIZED']['MAVO
 
 same( 'a forged click with a junk query is refused', false, MVS_Clicks::record( $scanner, 'fr', 1, 1 ) );
 
+/* --------------------------------------------------------------- abuse caps */
+
+$wpdb->query( 'DELETE FROM wp_mavo_search_log' );
+add_filter( 'mavo_search_log_daily_cap', static fn() => 3 );
+foreach ( [ 'a1x', 'b2x', 'c3x', 'd4x' ] as $q ) {
+	MVS_Log::record( $q, 'fr', 0 );
+}
+MVS_Log::record( 'a1x', 'fr', 0 );
+same( 'no more than the daily cap of new queries', 3, (int) $wpdb->get_var( 'SELECT COUNT(*) FROM wp_mavo_search_log' ) );
+same( '... while known ones still count', 2, (int) $wpdb->get_var( "SELECT searches FROM wp_mavo_search_log WHERE query = 'a1x'" ) );
+remove_all_filters( 'mavo_search_log_daily_cap' );
+
+same( 'no did-you-mean work for scanner payloads', '', mavo_search_did_you_mean( $scanner, 'fr' ) );
+same( 'no other-language work for scanner payloads', [], mavo_search_other_languages( $scanner, 'fr' ) );
+mavo_search_did_you_mean( 'portp', 'fr' );
+$before = $wpdb->num_queries;
+same( 'did you mean, cached', 'porto', mavo_search_did_you_mean( 'portp', 'fr' ) );
+same( '... without a query the second time', 0, $wpdb->num_queries - $before );
+
 done();

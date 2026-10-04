@@ -171,6 +171,16 @@ backslashes / angle brackets / control characters, more than two quotes, or
 over 100 characters. Only GET searches are counted (the form never POSTs).
 `robots.txt` should disallow `/?s=` for well-behaved crawlers.
 
+Security review after that (2026-10-04). Visitor input reaches SQL only through
+`prepare()` / `in_ints()` / `in_strings()` and `esc_like()`; every output is
+escaped or built from escaped parts; no visitor text is ever a regex
+(`preg_quote()` where it is matched); the query is capped at 200 characters
+and 10 word groups, rankings at 500 rows, term lookups at 30 000 rows. Added
+then against abuse rather than injection: clicks are accepted only for a
+query the log holds from today or yesterday; at most 2000 new log rows a day
+(`mavo_search_log_daily_cap`); "did you mean" and other-language counts skip
+junk queries and are cached per query; the near-miss term scan is capped.
+
 ### 11. Smaller things
 
 - **Stopwords** are short per-language lists; Relevanssi's 600-word French
@@ -329,7 +339,7 @@ lookups are index ranges on `(term, lang)`.
 ## Tests
 
 `tests/run.sh` runs each `test-*.php` in its own process against an in-memory
-SQLite `$wpdb` (`tests/harness.php`): 374 assertions over text, ranking (the
+SQLite `$wpdb` (`tests/harness.php`): 381 assertions over text, ranking (the
 representative queries of agent.md), excerpts and highlighting, the
 `posts_pre_query` integration and logging, incremental sync and status, the
 admin page, WP-CLI, and a site with none of the integrations.

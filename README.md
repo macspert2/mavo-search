@@ -116,7 +116,7 @@ Filters: `mavo_search_search_ok`, `mavo_search_query`, `mavo_search_parsed_query
 `mavo_search_highlight_query`, `mavo_search_highlight_html`, `mavo_search_image_concepts`, `mavo_search_reason`, `mavo_search_guides`, `mavo_search_synonyms`,
 `mavo_search_stopwords`, `mavo_search_log_enabled`.
 
-Also: `mavo_search_best_bets`, `mavo_search_suggestions`, `mavo_search_related`.
+Also: `mavo_search_best_bets`, `mavo_search_suggestions`, `mavo_search_related`, `mavo_search_log_daily_cap`.
 
 REST: `POST /wp-json/mavo-search/v1/click` (q, lang, post, rank, source) — the click counter.
 

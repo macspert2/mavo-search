@@ -5,7 +5,9 @@
  *
  * All three run only where a page already failed — a search with no or only
  * partial results, a 404 — never on an ordinary search. None of them logs:
- * the search log and click counts stay what visitors typed and chose.
+ * the search log and click counts stay what visitors typed and chose. The
+ * first two do nothing for junk queries (MVS_Log::junk(): scanner payloads)
+ * and cache their answer, so repeating a failed search costs nothing extra.
  *
  *   did_you_mean()     each word no document has is replaced by the closest
  *                      index term (1 edit for words up to 5 letters, 2 for
@@ -29,6 +31,25 @@ class MVS_Recover {
 
 	/** The query with its unknown words corrected, or '' when there is nothing to offer. */
 	public static function did_you_mean( string $query, string $lang ): string {
+		// Scanner payloads get no extra work; the rest is cached per query.
+		if ( MVS_Log::junk( $query ) ) {
+			return '';
+		}
+
+		$key    = 'dym:' . $lang . ':' . md5( $query );
+		$cached = MVS_Cache::get( $key );
+
+		if ( is_string( $cached ) ) {
+			return $cached;
+		}
+
+		$fixed = self::correct( $query, $lang );
+		MVS_Cache::set( $key, $fixed );
+
+		return $fixed;
+	}
+
+	private static function correct( string $query, string $lang ): string {
 		$parsed = MVS_Query::parse( $query, $lang );
 
 		if ( ! $parsed['groups'] || $parsed['phrases'] ) {
@@ -65,6 +86,17 @@ class MVS_Recover {
 
 	/** @return array<string,int> lang => exact results, other languages only, those with any. */
 	public static function other_languages( string $query, string $lang ): array {
+		if ( MVS_Log::junk( $query ) ) {
+			return [];
+		}
+
+		$key    = 'other:' . $lang . ':' . md5( $query );
+		$cached = MVS_Cache::get( $key );
+
+		if ( is_array( $cached ) ) {
+			return $cached;
+		}
+
 		$out = [];
 
 		foreach ( MVS_Lang::languages() as $other ) {
@@ -78,6 +110,8 @@ class MVS_Recover {
 				$out[ $other ] = $total;
 			}
 		}
+
+		MVS_Cache::set( $key, $out );
 
 		return $out;
 	}
@@ -149,7 +183,8 @@ class MVS_Recover {
 		$max        = $length <= 5 ? 1 : 2;
 		$candidates = (array) $wpdb->get_col( $wpdb->prepare(
 			'SELECT DISTINCT term FROM ' . MVS_DB::terms() . '
-			  WHERE lang = %s AND term LIKE %s AND LENGTH(term) BETWEEN %d AND %d',
+			  WHERE lang = %s AND term LIKE %s AND LENGTH(term) BETWEEN %d AND %d
+			  LIMIT 5000',
 			$lang,
 			$wpdb->esc_like( mb_substr( $token, 0, 1, 'UTF-8' ) ) . '%',
 			$length - $max,

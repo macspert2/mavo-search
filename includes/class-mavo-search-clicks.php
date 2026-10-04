@@ -15,8 +15,9 @@
  * posts, while counting is on (the search log's switch covers both).
  *
  * The endpoint is open, as any counter on a public page is; it accepts only
- * a post indexed in the given language, a sane rank and a known source, so
- * the worst a forger can do is inflate counts.
+ * a query the search log holds from today or yesterday, a post indexed in
+ * that language, a sane rank and a known source — so a forger can at most
+ * inflate counts of real searches, never add rows of invented ones.
  *
  * Nothing uses the counts to rank yet. They are collected now because a
  * learned boost, or judging any ranking change, needs months of them.
@@ -74,6 +75,19 @@ class MVS_Clicks {
 		$indexed = $wpdb->get_var( $wpdb->prepare( 'SELECT doc_id FROM ' . MVS_DB::docs() . " WHERE post_id = %d AND lang = %s AND status = 'indexed'", $post_id, $lang ) );
 
 		if ( ! $indexed ) {
+			return false;
+		}
+
+		// Only clicks on a search that was really made: the log must hold it
+		// from today or yesterday. A forger inventing queries adds nothing.
+		$searched = $wpdb->get_var( $wpdb->prepare(
+			'SELECT id FROM ' . MVS_DB::log() . ' WHERE query = %s AND lang = %s AND day >= %s LIMIT 1',
+			$query,
+			$lang,
+			gmdate( 'Y-m-d', time() - DAY_IN_SECONDS )
+		) );
+
+		if ( ! $searched ) {
 			return false;
 		}
 
