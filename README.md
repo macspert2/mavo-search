@@ -75,7 +75,7 @@ The loop works as always. Inside a search answered by Mavo Search:
 ```php
 if ( function_exists( 'mavo_search_result' ) ) {
     $hit = mavo_search_result();          // score, matched_fields, matched_image_concepts, places, hubs …
-    $all = mavo_search_current();         // total, pages, fallback ('or' = no exact results)
+    $all = mavo_search_current();         // total, pages, fallback ('or' = no exact results), missing_words
     $img = mavo_search_result_image();    // the post's photo matching the query's concepts, else featured
 }
 
@@ -86,6 +86,7 @@ mavo_search_the_title();                  // title with the query's words marked
 |---|---|
 | `mavo_search( $query, $args )` | Ranked results with excerpts; `$args`: lang, page, per_page, post_types, excerpts, fallback, explain |
 | `mavo_search_parse_query( $query, $lang )` | Word groups and variants, quoted phrases, image `concepts` — e.g. to link `mavo_image_results_url( $concept )` |
+| `mavo_search_image_concepts( $query, $lang )` | Concepts the query is *entirely* about ("eaux turquoise" → `turquoise_water`; "plage lefkada" → none), for a photo row |
 | `mavo_search_result( $post )` / `mavo_search_current()` | The current search's result for a post / as a whole |
 | `mavo_search_result_image( $post, $args )` | Attachment ID: best photo for the query's concepts, else the featured image |
 | `mavo_search_get_excerpt( $post_id, $query, $args )` | Contextual highlighted excerpt (escaped HTML) |
@@ -99,13 +100,23 @@ Filters: `mavo_search_search_ok`, `mavo_search_query`, `mavo_search_parsed_query
 `mavo_search_document_boost`, `mavo_search_places`, `mavo_search_hubs`,
 `mavo_search_guide_places`, `mavo_search_score`, `mavo_search_results`, `mavo_search_hits`,
 `mavo_search_excerpt`, `mavo_search_excerpt_length`, `mavo_search_replace_excerpt`,
-`mavo_search_highlight_query`, `mavo_search_highlight_html`, `mavo_search_synonyms`,
+`mavo_search_highlight_query`, `mavo_search_highlight_html`, `mavo_search_image_concepts`, `mavo_search_synonyms`,
 `mavo_search_stopwords`, `mavo_search_log_enabled`.
 
 Actions: `mavo_search_document_indexed( $post_id, $lang, $doc_id )`,
 `mavo_search_index_rebuilt( $mode )`, `mavo_search_query_logged( $query, $lang, $results )`.
 
 Coming from Relevanssi: `docs/relevanssi-compat.md`.
+
+## On the search page (child theme)
+
+- Each result tile shows the article's photo matching the query
+  (`mavo_search_result_image()`), else its featured image.
+- Partial matches are said plainly under the search box, naming the word
+  left out (`missing_words`).
+- A query that is exactly an image concept gets one row of photos from
+  mavo-image-index (`mavo_image_concept_row()`) between the header and the
+  articles, ruled off from them; first page only.
 
 ## Look
 

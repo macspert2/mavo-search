@@ -93,6 +93,14 @@ same( 'eaux turquoise: image alt and concept', [ 6 ], array_column( $turquoise['
 same( 'eaux turquoise: matched concept reported', [ 'turquoise_water' ], $turquoise['results'][0]['matched_image_concepts'] ?? null );
 same( 'parse exposes the concept for the /images/ bridge', [ 'turquoise_water' ], array_keys( mavo_search_parse_query( 'eaux turquoise' )['concepts'] ) );
 
+same( 'exact fit: the query is the concept', [ 'turquoise_water' ], mavo_search_image_concepts( 'Eaux turquoise' ) );
+same( 'exact fit: one word', [ 'beach' ], mavo_search_image_concepts( 'plage' ) );
+same( 'exact fit: plural, stopwords ignored', [ 'beach' ], mavo_search_image_concepts( 'les plages' ) );
+same( 'exact fit: two concepts', [ 'beach', 'garden' ], mavo_search_image_concepts( 'plage jardin' ) );
+same( 'not exact: a place besides the concept', [], mavo_search_image_concepts( 'plage lefkada' ) );
+same( 'not exact: no concept', [], mavo_search_image_concepts( 'londres' ) );
+same( 'not exact: a quoted phrase is literal', [], mavo_search_image_concepts( '"eaux turquoise"' ) );
+same( 'current search by default', [ 'garden' ], ( static function () { $GLOBALS['MOCK_SEARCH'] = 'jardins'; $c = mavo_search_image_concepts(); $GLOBALS['MOCK_SEARCH'] = ''; return $c; } )() );
 same( 'madere jardin: place + image concept', [ 7 ], ids( 'madere jardin' ) );
 same( 'forêt without accent', [ 7 ], ids( 'foret' ) );
 same( 'phare: found only in the image alt text', [ 12 ], ids( 'phare' ) );
@@ -108,6 +116,11 @@ same( 'quoted phrase in title ranks first', 3, $bath[0] ?? null );
 $or = mavo_search( 'londres zanzibar', [ 'excerpts' => false ] );
 same( 'no document has both words: fallback', 'or', $or['fallback'] );
 check( 'fallback still finds Londres', in_array( 1, array_column( $or['results'], 'post_id' ), true ) );
+same( 'fallback names the word found nowhere, as typed', [ 'Zanzibar' ], mavo_search( 'londres Zanzibar', [ 'excerpts' => false ] )['missing_words'] );
+same( 'words all known but never together: none missing', [], mavo_search( 'lefkada santorin', [ 'excerpts' => false ] )['missing_words'] );
+same( '... and still a fallback', 'or', mavo_search( 'lefkada santorin', [ 'excerpts' => false ] )['fallback'] );
+same( 'exact match: nothing missing', [], mavo_search( 'londres' )['missing_words'] );
+same( 'no result at all: every word missing', [ 'zzyzx' ], mavo_search( 'zzyzx' )['missing_words'] );
 same( 'no fallback when asked not to', 0, mavo_search( 'londres zanzibar', [ 'fallback' => false ] )['total'] );
 same( 'exact match: fallback none', 'none', mavo_search( 'londres' )['fallback'] );
 same( 'only stopwords: nothing', 0, mavo_search( 'le la les' )['total'] );
@@ -160,5 +173,13 @@ mavo_search( 'santorin' );
 $before = $wpdb->num_queries;
 mavo_search( 'santorin', [ 'page' => 1 ] );
 same( 'second identical search ranks from cache (excerpt query only)', 1, $wpdb->num_queries - $before );
+
+/* ------------------------------------------------- query-aware thumbnails */
+
+mvs_meta( 6, '_thumbnail_id', 601 );
+MVS_WP::pre_query( null, new WP_Query( [ 's' => 'plage lefkada', 'posts_per_page' => 10, 'paged' => 1 ] ) );
+same( 'result image: the photo matching the query', 600, mavo_search_result_image( 6 ) );
+MVS_WP::pre_query( null, new WP_Query( [ 's' => 'lefkada', 'posts_per_page' => 10, 'paged' => 1 ] ) );
+same( 'result image: no concept in the query, the featured image', 601, mavo_search_result_image( 6 ) );
 
 done();

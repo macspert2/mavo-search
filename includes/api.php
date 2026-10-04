@@ -35,10 +35,11 @@ defined( 'ABSPATH' ) || exit;
  *     @type bool            $explain    Default false: score components per result, and the parsed query.
  * }
  * @return array{query:string,lang:string,total:int,page:int,per_page:int,pages:int,fallback:string,
- *               results:array<int,array{post_id:int,score:float,matched_terms:string[],matched_fields:string[],
+ *               missing_words:string[],results:array<int,array{post_id:int,score:float,matched_terms:string[],matched_fields:string[],
  *               matched_image_concepts:string[],image_alt_only:bool,places:int[],hubs:int[],excerpt?:string,
  *               excerpt_source?:string,debug?:array}>,parsed?:array}
- *         fallback: 'none', or 'or' when the results only match some of the words.
+ *         fallback: 'none', or 'or' when the results only match some of the words;
+ *         missing_words: the query's words (as typed) found in no document at all.
  */
 function mavo_search( string $query, array $args = [] ): array {
 	return MVS_Engine::search( $query, $args );
@@ -72,10 +73,26 @@ function mavo_search_result( $post = null ): ?array {
 
 /**
  * The current search as a whole — total, pages, fallback ('or' = no exact
- * results, these are partial matches) — or null.
+ * results, these are partial matches), missing_words (words no document has,
+ * as typed) — or null.
  */
 function mavo_search_current(): ?array {
 	return MVS_WP::last();
+}
+
+/**
+ * The image concepts a query is entirely about ("eaux turquoise" →
+ * [ 'turquoise_water' ]), or [] — e.g. to offer a row of matching photos
+ * beside the results, apart from them. Only an exact fit: every word of the
+ * query names the concept, so "plage lefkada" gives [].
+ *
+ * @param string|null $query Default the current search.
+ * @return string[] mavo-image-index concept slugs, at most two.
+ */
+function mavo_search_image_concepts( ?string $query = null, ?string $lang = null ): array {
+	$query = $query ?? ( function_exists( 'get_search_query' ) ? (string) get_search_query( false ) : '' );
+
+	return '' === trim( $query ) ? [] : MVS_Query::exact_concepts( MVS_Query::parse( $query, $lang ) );
 }
 
 /**

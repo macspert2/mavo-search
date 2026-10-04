@@ -149,6 +149,9 @@ class MVS_Engine {
 			'per_page' => $per_page,
 			'pages'    => (int) ceil( $total / $per_page ),
 			'fallback' => $ranking['fallback'],
+			// The visitor's own spelling of words found nowhere, for "no
+			// result contains …" when the fallback answered.
+			'missing_words' => array_values( array_map( static fn( $g ) => (string) ( $parsed['groups'][ $g ]['raw'] ?? $parsed['groups'][ $g ]['token'] ?? '' ), $ranking['missing'] ?? [] ) ),
 			'results'  => $results,
 		];
 
@@ -162,7 +165,7 @@ class MVS_Engine {
 	/**
 	 * The whole ranked list, cached unless explaining.
 	 *
-	 * @return array{fallback:string,ranked:array<int,array>,explain:array}
+	 * @return array{fallback:string,ranked:array<int,array>,explain:array,missing:int[]} missing: group indexes no document matches
 	 */
 	public static function ranking( array $parsed, array $args = [] ): array {
 		$types   = self::types( $args['post_types'] ?? null );
@@ -197,7 +200,7 @@ class MVS_Engine {
 	private static function rank( array $parsed, array $types, bool $fallback, bool $explain ): array {
 		global $wpdb;
 
-		$empty  = [ 'fallback' => 'none', 'ranked' => [], 'explain' => [] ];
+		$empty  = [ 'fallback' => 'none', 'ranked' => [], 'explain' => [], 'missing' => [] ];
 		$groups = $parsed['groups'];
 		$lang   = $parsed['lang'];
 
@@ -247,7 +250,7 @@ class MVS_Engine {
 		}
 
 		if ( ! $best ) {
-			return $empty;
+			return [ 'missing' => array_keys( $groups ) ] + $empty;
 		}
 
 		$n_groups = count( $groups );
@@ -259,6 +262,9 @@ class MVS_Engine {
 				$df[ $g ]++;
 			}
 		}
+
+		// Words no document has at all: what a fallback had to leave out.
+		$missing = array_keys( array_filter( $df, static fn( $count ) => 0 === $count ) );
 
 		$rarity = [];
 		foreach ( $df as $g => $count ) {
@@ -277,7 +283,7 @@ class MVS_Engine {
 		}
 
 		if ( ! $matching ) {
-			return $empty;
+			return [ 'missing' => $missing ] + $empty;
 		}
 
 		$meta = self::meta( array_keys( $matching ), $types );
@@ -383,7 +389,7 @@ class MVS_Engine {
 
 		usort( $final, static fn( $a, $b ) => [ $b['score'], $b['date'], $b['post_id'] ] <=> [ $a['score'], $a['date'], $a['post_id'] ] );
 
-		return [ 'fallback' => $mode, 'ranked' => $final, 'explain' => $explain ? $parts : [] ];
+		return [ 'fallback' => $mode, 'ranked' => $final, 'explain' => $explain ? $parts : [], 'missing' => $missing ];
 	}
 
 	/**

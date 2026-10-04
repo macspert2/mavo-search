@@ -38,7 +38,7 @@ class MVS_Query {
 
 	/**
 	 * @return array{query:string,lang:string,normalized:string,tokens:string[],
-	 *               groups:array<int,array{token:string,variants:array<string,array{weight:float,kind:string}>,prefix:bool}>,
+	 *               groups:array<int,array{token:string,raw:string,variants:array<string,array{weight:float,kind:string}>,prefix:bool}>,
 	 *               phrases:string[],concepts:array<string,float>}
 	 */
 	public static function parse( string $query, ?string $lang = null ): array {
@@ -78,6 +78,7 @@ class MVS_Query {
 
 			$groups[ $norm ] = [
 				'token'    => $norm,
+				'raw'      => $word['raw'],
 				'variants' => $variants,
 				'prefix'   => mb_strlen( $norm, 'UTF-8' ) >= self::MIN_PREFIX && ! ctype_digit( $norm ),
 			];
@@ -142,6 +143,52 @@ class MVS_Query {
 		}
 
 		return [ 'terms' => $terms, 'prefixes' => array_values( array_unique( $prefixes ) ) ];
+	}
+
+	/**
+	 * The image concepts a query is entirely about — "eaux turquoise",
+	 * "plage", "jardins" — and only then: every word of the query must have
+	 * named a concept. "plage lefkada" is a search for Lefkada, not for
+	 * photos of beaches, and gets nothing here.
+	 *
+	 * The fewest, strongest concepts that cover every word, at most two, so a
+	 * concept the matcher only implied (beach → sea) does not ride along.
+	 *
+	 * @return string[] Concept slugs; [] when the query is not purely visual.
+	 */
+	public static function exact_concepts( array $parsed ): array {
+		if ( ! $parsed['groups'] || ! $parsed['concepts'] || $parsed['phrases'] ) {
+			return [];
+		}
+
+		$covers = [];
+		foreach ( $parsed['groups'] as $g => $group ) {
+			foreach ( $group['variants'] as $term => $variant ) {
+				if ( 'concept' === $variant['kind'] ) {
+					$covers[ substr( (string) $term, 1 ) ][] = $g;
+				}
+			}
+		}
+
+		$concepts = $parsed['concepts'];
+		arsort( $concepts );
+
+		$chosen  = [];
+		$covered = [];
+
+		foreach ( array_keys( $concepts ) as $slug ) {
+			$new = array_diff( $covers[ $slug ] ?? [], $covered );
+
+			if ( $new ) {
+				$chosen[] = (string) $slug;
+				$covered  = array_merge( $covered, $new );
+			}
+		}
+
+		$exact = ! array_diff( array_keys( $parsed['groups'] ), $covered ) && count( $chosen ) <= 2 ? $chosen : [];
+
+		/** The image concepts a query is entirely about, for a photo row beside the results. */
+		return array_values( (array) apply_filters( 'mavo_search_image_concepts', $exact, $parsed ) );
 	}
 
 	/** For tests. */

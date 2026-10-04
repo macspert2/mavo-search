@@ -169,12 +169,32 @@ posts are not counted. Pruned after 400 days. agent.md's `clicked_*` and
 - **`mavo_search_excerpt_sources`** was not added: sources are the text and
   the hand-written excerpt. **`mavo_search_post_reindexed`** is
   `mavo_search_document_indexed`.
-- **`mavo_search_result_image()`** (query-aware thumbnail) exists but the
-  theme does not call it yet.
+- **`mavo_search_result_image()`** (query-aware thumbnail) is called by the
+  theme's `content.php` since 2026-10-04.
 - **Content skip marker**: `<!-- mavo-search:skip -->…<!-- /mavo-search:skip -->`.
 - **Password-protected posts** are found by title and excerpt only.
 
 ---
+
+## Search page additions (2026-10-04)
+
+Brainstorm items chosen by the user: query-aware thumbnails, the image bridge
+and honest partial results. Presentation stays in the theme
+(`inc/mv-search-page.php`, `content.php`); this plugin only supplies facts.
+
+- **Partial results**: the ranking records which words no document has
+  (`missing_words` in `mavo_search()` / `mavo_search_current()`, as the
+  visitor typed them). The theme says "no article mentions « Zanzibar »",
+  or, when every word exists but never together, says that.
+- **Photo row, exact fit only** (user's condition: most visitors do not
+  want to browse images): `mavo_search_image_concepts()` returns concepts
+  only when *every* word of the query named one — the fewest, strongest
+  concepts covering all words, at most two; never for quoted phrases. So
+  "eaux turquoise", "plage", "les plages" get a row; "plage lefkada" does
+  not. The row is mavo-image-index's own browse row
+  (`mavo_image_concept_row()`, added for this), shown in its own ruled band
+  above the articles — the "group, don't mix" idea, as the user asked.
+- **Thumbnails**: unchanged API; the theme now calls it.
 
 ## Ranking, in one place
 
@@ -200,7 +220,7 @@ lookups are index ranges on `(term, lang)`.
 ## Tests
 
 `tests/run.sh` runs each `test-*.php` in its own process against an in-memory
-SQLite `$wpdb` (`tests/harness.php`): 205 assertions over text, ranking (the
+SQLite `$wpdb` (`tests/harness.php`): 220 assertions over text, ranking (the
 representative queries of agent.md), excerpts and highlighting, the
 `posts_pre_query` integration and logging, incremental sync and status, the
 admin page, WP-CLI, and a site with none of the integrations.
