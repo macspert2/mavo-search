@@ -27,8 +27,40 @@ class MVS_Log {
 	 */
 	const MAX_NEW_PER_DAY = 2000;
 
+	/**
+	 * What vulnerability scanners put in ?s= and no visitor types: SQL
+	 * (sleep(), union select, waitfor delay, dbms_pipe, or 3=3…; a
+	 * word followed by a space and a bracket, "char (voile)", is not one), template
+	 * and expression injection (${…}, {{…}}, jndi:), file paths
+	 * (/etc/passwd, ../), and the scanners' own callback hosts (bxss.me,
+	 * Acunetix, Burp Collaborator, interactsh). Matched against the decoded,
+	 * lowercased query. mavo-quick-404 keeps its own copy of this list to
+	 * answer such searches with a 403 before WordPress loads; keep the two
+	 * alike.
+	 */
+	const PROBES = '~
+		\b(?:union\s+(?:all\s+)?select|insert\s+into|drop\s+table|information_schema|waitfor\s+delay|xp_cmdshell|dbms_pipe)\b
+		| \b(?:sleep|pg_sleep|benchmark|md5|sha1|concat|char|chr|extractvalue|updatexml|load_file|print|eval|exec|system|phpinfo|base64_decode|sysdate|now)\(
+		| @@[a-z] | \$\{ | \{\{ | <\? | \bjndi: | /etc/(?:passwd|hosts|shadow) | win\.ini | web-inf | \.\.[/\\\\]
+		| bxss\.me | \.acu/ | vulnweb | acunetix | burpcollaborator | oastify | interact\.sh | \boast\.[a-z] | dnslog | nslookup | response\.write
+		| \b(?:and|or|xor)\s+\d[\d\s+*-]*[=<>]
+	~xu';
+
+	/**
+	 * Bump when PROBES or junk() change: rows counted under the old rules
+	 * that are junk under the new ones are then deleted once (purge_junk()).
+	 */
+	const JUNK_RULES        = 3;
+	const JUNK_RULES_OPTION = 'mavo_search_junk_rules';
+	const PURGE_HOOK        = 'mavo_search_purge_junk';
+
 	public static function init(): void {
 		add_action( self::PRUNE_HOOK, [ __CLASS__, 'prune' ] );
+		add_action( self::PURGE_HOOK, [ __CLASS__, 'purge_junk' ] );
+
+		if ( self::JUNK_RULES !== (int) get_option( self::JUNK_RULES_OPTION, 0 ) && ! wp_next_scheduled( self::PURGE_HOOK ) ) {
+			wp_schedule_single_event( time() + 60, self::PURGE_HOOK );
+		}
 	}
 
 	public static function schedule(): void {
@@ -55,6 +87,14 @@ class MVS_Log {
 	 *   encoded more than once (a crawler re-encoding a stored URL)
 	 *   not UTF-8 once decoded (cut-off bytes, overlong quotes)
 	 *   backslashes, angle brackets or control characters (injection probes)
+	 *   { } $ = ; | ^ * @ or backticks — code, not words; a visitor's rare
+	 *   "crète*" only goes uncounted
+	 *   a scanner's signature (PROBES)
+	 *   a run of brackets, quotes, commas and dots with at least one bracket
+	 *   and one quote: the syntax breakers that follow a scanner's baseline
+	 *   word, "eavz)'(,,).)"("
+	 *   a locale or page segment, "maurice/fr-fr", "spa/page/7/en-gb": not a
+	 *   scanner but crawlers appending a path to a search URL
 	 *   more than two quotes, or longer than 100 characters
 	 *
 	 * @param string $raw The query as received, before cleaning.
@@ -65,15 +105,93 @@ class MVS_Log {
 
 		return $rounds > 0
 			|| ! mb_check_encoding( $raw, 'UTF-8' )
-			|| (bool) preg_match( '/[\\\\<>\x00-\x1f\x7f]/u', $decoded )
+			|| (bool) preg_match( '/[\\\\<>{}$=;|^*@`\x00-\x1f\x7f]/u', $decoded )
+			|| self::probe( $decoded )
+			|| self::breaker( $decoded )
+			|| (bool) preg_match( '~/(?:[a-z]{2}-[a-z]{2}|page/\d+)(/|$)~i', $decoded )
 			|| preg_match_all( '/["\'\x{2019}]/u', $decoded ) > 2
 			|| mb_strlen( trim( $decoded ), 'UTF-8' ) > 100;
+	}
+
+	/** A scanner's signature in the (decoded) query. */
+	public static function probe( string $query ): bool {
+		return (bool) preg_match( self::PROBES, mb_strtolower( $query, 'UTF-8' ) );
+	}
+
+	/** Brackets, quotes, commas and dots in a run, with a bracket and a quote among them: )'(,,).)"( */
+	public static function breaker( string $query ): bool {
+		preg_match_all( '/[()\'"\x{2019},.]{4,}/u', $query, $runs );
+
+		foreach ( $runs[0] as $run ) {
+			if ( preg_match( '/[()]/', $run ) && preg_match( '/[\'"\x{2019}]/u', $run ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * The random word a scanner searches alone before probing with it —
+	 * "eavz" five times, then "eavz)'(,,).)"(" — so that the word's own rows
+	 * can go when the probe shows what they were. '' when $raw does not
+	 * start with a word glued to the probe.
+	 */
+	public static function baseline( string $raw ): string {
+		return preg_match( '/^\s*(\p{L}{3,12})[()\'"\x{2019},.\\\\<>]/u', MVS_Query::decode( $raw ), $m ) ? mb_strtolower( $m[1], 'UTF-8' ) : '';
+	}
+
+	/** Delete a scanner's baseline word for that language and day — only where it found nothing. */
+	private static function forget_baseline( string $raw, string $lang, string $day ): void {
+		global $wpdb;
+
+		$word = self::baseline( $raw );
+
+		if ( '' !== $word ) {
+			$wpdb->query( $wpdb->prepare( 'DELETE FROM ' . MVS_DB::log() . ' WHERE query = %s AND lang = %s AND day = %s AND results = 0', $word, $lang, $day ) );
+		}
+	}
+
+	/**
+	 * Delete the log and click rows of queries that junk() now refuses —
+	 * counted before a rule existed — and the baselines they reveal. Runs
+	 * once per JUNK_RULES.
+	 *
+	 * @return int Queries removed.
+	 */
+	public static function purge_junk(): int {
+		global $wpdb;
+
+		foreach ( (array) $wpdb->get_results( 'SELECT query, lang, day FROM ' . MVS_DB::log(), ARRAY_A ) as $row ) {
+			if ( self::junk( $row['query'] ) ) {
+				self::forget_baseline( $row['query'], $row['lang'], $row['day'] );
+			}
+		}
+
+		$queries = array_merge(
+			(array) $wpdb->get_col( 'SELECT DISTINCT query FROM ' . MVS_DB::log() ),
+			(array) $wpdb->get_col( 'SELECT DISTINCT query FROM ' . MVS_DB::clicks() )
+		);
+		$junk    = array_values( array_unique( array_filter( $queries, [ __CLASS__, 'junk' ] ) ) );
+
+		foreach ( array_chunk( $junk, 200 ) as $chunk ) {
+			$in = MVS_DB::in_strings( $chunk );
+			$wpdb->query( 'DELETE FROM ' . MVS_DB::log() . " WHERE query IN ($in)" );
+			$wpdb->query( 'DELETE FROM ' . MVS_DB::clicks() . " WHERE query IN ($in)" );
+		}
+
+		update_option( self::JUNK_RULES_OPTION, self::JUNK_RULES, true );
+
+		return count( $junk );
 	}
 
 	public static function record( string $query, string $lang, int $results, string $fallback = 'none' ): void {
 		global $wpdb;
 
 		if ( self::junk( $query ) ) {
+			if ( self::enabled() ) {
+				self::forget_baseline( $query, $lang, current_time( 'Y-m-d' ) );
+			}
 			return;
 		}
 

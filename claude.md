@@ -181,6 +181,27 @@ query the log holds from today or yesterday; at most 2000 new log rows a day
 (`mavo_search_log_daily_cap`); "did you mean" and other-language counts skip
 junk queries and are cached per query; the near-miss term scan is capped.
 
+Scanner signatures (2026-10-05, user's report: probes filling the log).
+`MVS_Log::PROBES` names what scanners put in `s` and visitors never type —
+`sleep(`, `union select`, `waitfor delay`, `or 3=3`, `${`, `{{`,
+`/etc/passwd`, `../`, bxss.me / Acunetix / Burp / interactsh hosts — and
+`junk()` also refuses `{ } $ = ; | ^ * @` and backticks. Function names
+match only with the bracket attached ("sleep in barcelona" is a search).
+
+What the live log actually held (the user's export, 2026-10-05) was simpler:
+a random baseline word searched alone ("eavz" ×5), then the same word glued
+to a run of brackets and quotes ("eavz)'(,,).)"("), in fr, de and en. Such a
+run (`breaker()`) is junk, and when it arrives the baseline word's row for
+that day and language is deleted — only if it found nothing
+(`baseline()`). Also junk: a `/xx-xx` or `/page/N` segment
+("maurice/fr-fr", "spa/page/7/en-gb") — crawlers appending a path to a
+search URL, harmless, still answered. Rows counted before a rule existed are
+deleted once by `purge_junk()` (a cron event scheduled when `JUNK_RULES`
+changes — bump it with the list); on that export it removed 21 of 101 rows.
+mavo-quick-404 holds a copy of the list and answers such searches with an
+empty 403 before plugins load (user's request for the cheapest answer); its
+README has a Cloudflare rule for the commonest, which costs no PHP at all.
+
 ### 11. Smaller things
 
 - **Stopwords** are short per-language lists; Relevanssi's 600-word French
@@ -339,7 +360,7 @@ lookups are index ranges on `(term, lang)`.
 ## Tests
 
 `tests/run.sh` runs each `test-*.php` in its own process against an in-memory
-SQLite `$wpdb` (`tests/harness.php`): 381 assertions over text, ranking (the
+SQLite `$wpdb` (`tests/harness.php`): 432 assertions over text, ranking (the
 representative queries of agent.md), excerpts and highlighting, the
 `posts_pre_query` integration and logging, incremental sync and status, the
 admin page, WP-CLI, and a site with none of the integrations.
